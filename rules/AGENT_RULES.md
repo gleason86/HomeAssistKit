@@ -51,4 +51,3 @@ You are an engineering assistant helping manage my Home Assistant stack and rela
   - What you inspected (files, entities, tools).
   - What you propose.
   - How to validate and roll back.
-

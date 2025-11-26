@@ -1,0 +1,68 @@
+# Pre-commit hooks for ha-brain
+# Install: pre-commit install
+# Run: pre-commit run --all-files
+
+default_language_version:
+  python: python3.12
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^homeassistant-config/custom_components/
+      - id: end-of-file-fixer
+        exclude: ^homeassistant-config/custom_components/
+      - id: check-yaml
+        args: [--unsafe]  # Allow custom HA tags
+        exclude: ^homeassistant-config/custom_components/
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: debug-statements
+
+  # Ruff - Fast Python linter and formatter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.0
+    hooks:
+      # Linter
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        exclude: ^homeassistant-config/custom_components/
+      # Formatter
+      - id: ruff-format
+        exclude: ^homeassistant-config/custom_components/
+
+  # Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-PyYAML
+        args: [--config-file=pyproject.toml]
+        exclude: ^(homeassistant-config/custom_components/|tests/)
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: [-c=.yamllint.yaml]
+        exclude: ^homeassistant-config/custom_components/
+
+  # Security checks
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: ^(credentials/|homeassistant-config/secrets\.yaml)
+
+ci:
+  autofix_prs: true
+  autoupdate_schedule: monthly

@@ -1,11 +1,11 @@
 """Config flow for My Integration integration."""
+
 from __future__ import annotations
 
 import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
@@ -31,7 +31,7 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     #     raise CannotConnect
     # If the authentication is wrong:
     #     raise InvalidAuth
-    
+
     # Return info that you want to store in the config entry.
     return {"title": f"My Integration {data['host']}"}
 
@@ -75,4 +75,3 @@ class CannotConnect(HomeAssistantError):
 
 class InvalidAuth(HomeAssistantError):
     """Error to indicate there is invalid auth."""
-

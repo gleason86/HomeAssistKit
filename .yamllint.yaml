@@ -1,0 +1,88 @@
+# YAML Lint configuration for Home Assistant configs
+# Run: yamllint homeassistant-config/
+
+extends: default
+
+yaml-files:
+  - "*.yaml"
+  - "*.yml"
+
+ignore: |
+  .venv/
+  homeassistant-config/custom_components/
+  node_modules/
+
+rules:
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Line length - be lenient for HA templates
+  line-length:
+    max: 200
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Allow duplicate keys for HA automation structure
+  key-duplicates: enable
+
+  # Truthy values - be lenient for HA booleans
+  truthy:
+    allowed-values: ["true", "false", "yes", "no", "on", "off"]
+    check-keys: false
+
+  # Comments
+  comments:
+    require-starting-space: true
+    min-spaces-from-content: 1
+
+  # Brackets and braces
+  brackets:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Colons and commas
+  colons:
+    max-spaces-before: 0
+    max-spaces-after: -1
+  commas:
+    max-spaces-before: 0
+    min-spaces-after: 1
+    max-spaces-after: 1
+
+  # Hyphens
+  hyphens:
+    max-spaces-after: 1
+
+  # Empty lines
+  empty-lines:
+    max: 2
+    max-start: 0
+    max-end: 1
+
+  # Document start/end markers (optional for HA)
+  document-start: disable
+  document-end: disable
+
+  # New lines
+  new-line-at-end-of-file: enable
+  new-lines:
+    type: unix
+
+  # Allow trailing spaces in comments (for template readability)
+  trailing-spaces: enable
+
+  # Octal values (sometimes used in HA)
+  octal-values:
+    forbid-implicit-octal: true
+    forbid-explicit-octal: false
+
+  # Quoted strings
+  quoted-strings:
+    quote-type: any
+    required: false

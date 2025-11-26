@@ -1,0 +1,76 @@
+{
+    // Python configuration
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
+    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.exclude": [
+        "homeassistant-config"
+    ],
+    // Formatting - use Ruff as the default formatter
+    "[python]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.codeActionsOnSave": {
+            "source.fixAll": "explicit",
+            "source.organizeImports": "explicit"
+        }
+    },
+    // YAML configuration
+    "[yaml]": {
+        "editor.insertSpaces": true,
+        "editor.tabSize": 2,
+        "editor.formatOnSave": true,
+        "editor.autoIndent": "advanced"
+    },
+    // Editor settings
+    "editor.rulers": [
+        88
+    ],
+    "editor.formatOnSave": true,
+    "editor.renderWhitespace": "boundary",
+    "editor.trimAutoWhitespace": true,
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.trimFinalNewlines": true,
+    // File associations
+    "files.associations": {
+        "*.yaml": "yaml",
+        "*.yml": "yaml",
+        "secrets.yaml": "yaml"
+    },
+    // Exclude from file explorer
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.pytest_cache": true,
+        "**/*.pyc": true,
+        "**/.mypy_cache": true,
+        "**/.ruff_cache": true,
+        ".venv": true
+    },
+    // Search exclusions
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/.venv": true,
+        "**/__pycache__": true,
+        "**/homeassistant-config/custom_components/hacs/hacs_frontend": true
+    },
+    // Testing configuration
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests",
+        "agents/mcp_ha_server/tests"
+    ],
+    // Terminal configuration
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+    "terminal.integrated.env.windows": {
+        "PYTHONDONTWRITEBYTECODE": "1"
+    },
+    // Git configuration
+    "git.autofetch": true,
+    "git.enableSmartCommit": true,
+    // Ruff extension settings
+    "ruff.organizeImports": true,
+    "ruff.fixAll": true
+}

@@ -1,0 +1,28 @@
+{
+    "recommendations": [
+        // Python Development
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        // YAML Support
+        "redhat.vscode-yaml",
+        // Home Assistant
+        "keesschollaart.vscode-home-assistant",
+        "frenck.home-assistant",
+        // Git & Version Control
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        // Testing
+        "ms-python.pytest-adapter",
+        // General Development
+        "esbenp.prettier-vscode",
+        "streetsidesoftware.code-spell-checker",
+        "usernamehw.errorlens",
+        "gruntfuggly.todo-tree",
+        // Docker (if using containers)
+        "ms-azuretools.vscode-docker",
+        // Remote Development
+        "ms-vscode-remote.remote-ssh"
+    ],
+    "unwantedRecommendations": []
+}

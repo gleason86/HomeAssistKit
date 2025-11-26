@@ -1,4 +1,5 @@
 """Data models for device communication."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,4 +14,3 @@ class DeviceState:
     status: str
     value: float | None = None
     metadata: dict[str, Any] | None = None
-

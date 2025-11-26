@@ -1,4 +1,5 @@
 """Sensor platform for My Integration."""
+
 from __future__ import annotations
 
 from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
@@ -54,4 +55,3 @@ class MyIntegrationSensor(
         """Return the native value of the sensor."""
         # TODO: Return actual sensor value from coordinator.data
         return self.coordinator.data.get(self.entity_description.key)
-

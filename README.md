@@ -42,4 +42,3 @@ See `rules/` directory for:
 - `AGENT_RULES.md` - Global policy for MCP agents
 - `HA_BEST_PRACTICES.md` - HA-specific constraints and patterns
 - `.cursor/rules.md` - Cursor's local editing style
-

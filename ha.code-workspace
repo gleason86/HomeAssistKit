@@ -1,21 +1,165 @@
 {
   "folders": [
-    { "path": "." },
-    { "path": "homeassistant-config" },
-    { "path": "integrations" },
-    { "path": "agents" }
+    {
+      "path": "."
+    },
+    {
+      "path": "homeassistant-config",
+      "name": "HA Config"
+    },
+    {
+      "path": "integrations",
+      "name": "Custom Integrations"
+    },
+    {
+      "path": "agents",
+      "name": "MCP Agents"
+    }
   ],
   "settings": {
-    "python.defaultInterpreterPath": ".venv/bin/python",
+    // Python - cross-platform paths
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
     "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.autoImportCompletions": true,
+    // File exclusions
     "files.exclude": {
       "**/__pycache__": true,
+      "**/.pytest_cache": true,
+      "**/.mypy_cache": true,
+      "**/.ruff_cache": true,
       ".venv": true
     },
+    // YAML formatting
     "[yaml]": {
       "editor.insertSpaces": true,
-      "editor.tabSize": 2
+      "editor.tabSize": 2,
+      "editor.formatOnSave": true
+    },
+    // Python formatting with Ruff
+    "[python]": {
+      "editor.formatOnSave": true,
+      "editor.defaultFormatter": "charliermarsh.ruff",
+      "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+      }
+    },
+    // Editor settings
+    "editor.rulers": [
+      88
+    ],
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    // Testing
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    // Ruff extension
+    "ruff.organizeImports": true,
+    "ruff.fixAll": true,
+    // Search exclusions
+    "search.exclude": {
+      "**/homeassistant-config/custom_components/hacs/hacs_frontend": true,
+      "**/.venv": true
     }
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "charliermarsh.ruff",
+      "redhat.vscode-yaml",
+      "keesschollaart.vscode-home-assistant",
+      "frenck.home-assistant",
+      "eamodio.gitlens"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python: Current File",
+        "type": "debugpy",
+        "request": "launch",
+        "program": "${file}",
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}"
+      },
+      {
+        "name": "MCP HA Server",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "agents.mcp_ha_server.src",
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "PYTHONPATH": "${workspaceFolder}"
+        }
+      },
+      {
+        "name": "Pytest: All Tests",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "pytest",
+        "args": [
+          "-v"
+        ],
+        "console": "integratedTerminal",
+        "cwd": "${workspaceFolder}"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Install Dependencies",
+        "type": "shell",
+        "command": "${workspaceFolder}/.venv/Scripts/pip.exe install -e '.[dev]'",
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "Run Tests",
+        "type": "shell",
+        "command": "${workspaceFolder}/.venv/Scripts/pytest.exe",
+        "group": "test",
+        "problemMatcher": []
+      },
+      {
+        "label": "Lint with Ruff",
+        "type": "shell",
+        "command": "${workspaceFolder}/.venv/Scripts/ruff.exe check .",
+        "group": "test",
+        "problemMatcher": []
+      },
+      {
+        "label": "Format with Ruff",
+        "type": "shell",
+        "command": "${workspaceFolder}/.venv/Scripts/ruff.exe format .",
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "Type Check with MyPy",
+        "type": "shell",
+        "command": "${workspaceFolder}/.venv/Scripts/mypy.exe agents integrations",
+        "group": "test",
+        "problemMatcher": []
+      },
+      {
+        "label": "YAML Lint HA Config",
+        "type": "shell",
+        "command": "${workspaceFolder}/.venv/Scripts/yamllint.exe homeassistant-config/",
+        "group": "test",
+        "problemMatcher": []
+      },
+      {
+        "label": "Pre-commit Run All",
+        "type": "shell",
+        "command": "${workspaceFolder}/.venv/Scripts/pre-commit.exe run --all-files",
+        "group": "test",
+        "problemMatcher": []
+      }
+    ]
   }
 }
-

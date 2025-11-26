@@ -1,50 +1,113 @@
 # MCP Home Assistant Server
 
-MCP (Model Context Protocol) server for Home Assistant integration.
+MCP (Model Context Protocol) server for Home Assistant integration. This server allows Claude (in Cursor) to query and control your Home Assistant instance.
 
 ## Overview
 
 This MCP server exposes tools that allow AI agents to interact with Home Assistant:
 - Read entity states and configurations
-- List automations and scripts
-- Propose configuration changes as patches
-- Run tests and validations
-
-## Architecture
-
-The server communicates with:
-- Home Assistant instance via REST/WebSocket API
-- Git repository for reading/writing config and code
-
-## Tools
-
-### Read-only tools (always safe)
-- `ha_list_entities(domain?)` - List all entities or filter by domain
-- `ha_get_state(entity_id)` - Get current state of an entity
-- `ha_list_automations()` - List all automations
-- `repo_diff(path?)` - Show git diff for specified path
-
-### Write tools (guarded, require approval)
-- `ha_call_service(domain, service, data)` - Call a Home Assistant service
-- `ha_propose_automation(diff)` - Propose an automation change as a patch
-- `repo_apply_patch(patch)` - Apply a git patch after approval
-- `repo_run_tests(target?)` - Run tests for specified target
+- Search entities by name or domain
+- Query historical state data
+- Call services (turn on/off devices, run scripts)
 
 ## Setup
 
-1. Install dependencies:
-   ```bash
-   pip install -e ".[dev]"
-   ```
+### 1. Install Dependencies
 
-2. Configure Home Assistant connection in environment or config file
+From the `agents/mcp_ha_server` directory:
 
-3. Run the server:
-   ```bash
-   python -m mcp_ha_server
-   ```
+```bash
+pip install -e ".[dev]"
+```
+
+Or from repo root:
+
+```bash
+pip install httpx websockets pyyaml mcp
+```
+
+### 2. Configure Home Assistant API Token
+
+1. Open Home Assistant in your browser: `http://192.168.1.110:8123`
+2. Click your profile (bottom-left)
+3. Scroll to "Long-Lived Access Tokens"
+4. Click "Create Token", name it "MCP Agent"
+5. Copy the token to `credentials/ha_api.yaml`:
+
+```yaml
+host: "http://192.168.1.110:8123"
+token: "<your-token-here>"
+```
+
+### 3. Register with Cursor
+
+Copy the `mcp.json` from repo root to your Cursor MCP config, or add manually:
+
+**Windows**: `%APPDATA%\Cursor\User\globalStorage\cursor.mcp\mcp.json`
+**macOS**: `~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/mcp.json`
+
+```json
+{
+  "mcpServers": {
+    "home-assistant": {
+      "command": "python",
+      "args": ["-m", "src"],
+      "cwd": "C:/Users/david/Repos/ha_brain/agents/mcp_ha_server",
+      "env": {
+        "PYTHONPATH": "C:/Users/david/Repos/ha_brain/agents/mcp_ha_server"
+      }
+    }
+  }
+}
+```
+
+> **Note:** Use absolute paths for reliability. The repo includes an `mcp.json` with relative paths that works when Cursor resolves from workspace root.
+
+### 4. Restart Cursor
+
+Restart Cursor to load the MCP server. Claude should now have access to the HA tools.
+
+## Available Tools
+
+### Read-only (safe)
+- `ha_list_entities` - List all entities, optionally filtered by domain
+- `ha_get_state` - Get current state and attributes of an entity
+- `ha_search_entities` - Search entities by name or ID
+- `ha_get_history` - Query historical state changes
+- `ha_entity_summary` - Get count of entities by domain
+- `ha_get_services` - List available services
+
+### Write (use with care)
+- `ha_call_service` - Call a Home Assistant service (turn on/off, etc.)
+
+## Example Usage (in Cursor)
+
+Once configured, you can ask Claude things like:
+
+- "What lights are currently on in my house?"
+- "Show me the temperature sensor history for the last 6 hours"
+- "What entities do I have in my Home Assistant?"
+- "Turn off the living room lights"
 
 ## Development
 
-See `src/` for implementation and `tests/` for test suite.
+### Run Server Manually
 
+```bash
+cd agents/mcp_ha_server
+python -m src
+```
+
+### Run Tests
+
+```bash
+pytest tests/
+```
+
+## Architecture
+
+```
+Cursor (Claude) → MCP Protocol → server.py → ha_client.py → HA REST API → Pi
+```
+
+The server uses stdio for MCP communication and httpx for async HTTP requests to Home Assistant.

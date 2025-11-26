@@ -44,4 +44,3 @@
 - Only use tools that change HA state when:
   - Explicitly asked to run an experiment, or
   - A rule or test plan has been clearly established.
-

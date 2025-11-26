@@ -1,8 +1,9 @@
 """Data update coordinator for My Integration."""
+
 from __future__ import annotations
 
-from datetime import timedelta
 import logging
+from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -56,9 +57,8 @@ class MyIntegrationDataUpdateCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             # TODO: Replace with actual API call
             # data = await self.api.async_get_data()
             # return data
-            
+
             # Placeholder return
             return {"example": "value"}
         except Exception as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
-

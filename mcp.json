@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "home-assistant": {
+            "command": "python",
+            "args": [
+                "-m",
+                "src"
+            ],
+            "cwd": "agents/mcp_ha_server",
+            "env": {
+                "PYTHONPATH": "agents/mcp_ha_server"
+            }
+        }
+    }
+}
