@@ -1,0 +1,15 @@
+# Example service definitions
+# Uncomment and customize as needed
+
+# example_service:
+#   name: Example Service
+#   description: An example service
+#   fields:
+#     entity_id:
+#       name: Entity
+#       description: The entity to act upon
+#       required: true
+#       selector:
+#         entity:
+#           domain: sensor
+

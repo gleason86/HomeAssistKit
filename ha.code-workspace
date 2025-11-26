@@ -1,0 +1,21 @@
+{
+  "folders": [
+    { "path": "." },
+    { "path": "homeassistant-config" },
+    { "path": "integrations" },
+    { "path": "agents" }
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": ".venv/bin/python",
+    "python.analysis.typeCheckingMode": "basic",
+    "files.exclude": {
+      "**/__pycache__": true,
+      ".venv": true
+    },
+    "[yaml]": {
+      "editor.insertSpaces": true,
+      "editor.tabSize": 2
+    }
+  }
+}
+

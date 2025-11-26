@@ -1,0 +1,22 @@
+# Home Assistant Configuration
+# This is the main configuration file
+
+# Load default configuration
+default_config:
+
+# Load packages
+homeassistant:
+  packages: !include_dir_named packages
+
+# Example: Uncomment and configure as needed
+# http:
+#   use_x_forwarded_for: true
+#   trusted_proxies:
+#     - 127.0.0.1
+#     - ::1
+
+# logger:
+#   default: info
+#   logs:
+#     custom_components.my_integration: debug
+
