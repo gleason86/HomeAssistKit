@@ -1,0 +1,478 @@
+# Statistics & Energy Tracking
+
+## Energy Statistics Overview
+
+Home Assistant's energy dashboard and statistics system requires specific sensor configurations to function correctly. Misconfiguration leads to negative values, missing data, and incorrect totals.
+
+## Sensor Configuration
+
+### Required Attributes for Energy Sensors
+
+```yaml
+sensor:
+  - platform: template
+    sensors:
+      energy_sensor_name:
+        unique_id: energy_sensor_unique_id
+        friendly_name: "Energy Sensor"
+        unit_of_measurement: "kWh" # REQUIRED
+        device_class: energy # REQUIRED
+        state_class: total_increasing # REQUIRED for energy
+        state: >
+          {{ states('sensor.source') | float(0) }}
+```
+
+### State Class Comparison
+
+**`state_class: total`**
+
+- Allows values to increase **or decrease**
+- Records both positive and negative deltas
+- Use for: Resettable counters, non-monotonic values
+- ⚠️ Danger: Can create negative energy totals when sensors reset
+
+**`state_class: total_increasing`**
+
+- Only allows values to increase
+- **Ignores decreases** - treats them as sensor resets
+- Use for: Cumulative energy consumption/production
+- ✅ Safe: Prevents negative energy dashboard values
+
+**`state_class: measurement`**
+
+- Point-in-time measurements (not cumulative)
+- Use for: Power (W), temperature, humidity
+- Not suitable for energy dashboard
+
+### Energy Sensor Best Practices
+
+```yaml
+# ✅ CORRECT - Battery charging loss
+- name: "Battery Charging Loss"
+  unique_id: battery_charging_loss
+  unit_of_measurement: "kWh"
+  device_class: energy
+  state_class: total_increasing # Prevents negatives
+  icon: mdi:battery-charging-outline
+  state: >
+    {{ (states('sensor.battery_charged') | float(0) * 0.05) | round(3) }}
+
+# ✅ CORRECT - Clamped to zero
+- name: "Inverter Power Consumption"
+  unique_id: inverter_power_consumption
+  unit_of_measurement: "kWh"
+  device_class: energy
+  state_class: total_increasing
+  state: >
+    {% set tesla = states('sensor.tesla_solar') | float(0) %}
+    {% set emporia = states('sensor.emporia_solar') | float(0) %}
+    {% set diff = tesla - emporia %}
+    {{ [diff, 0] | max | round(3) }}
+
+# ❌ WRONG - Can go negative
+- name: "Battery Loss"
+  state_class: total # BAD!
+  state: >
+    {{ states('sensor.battery_charged') | float(0) * 0.05 }}
+```
+
+## Common Energy Calculations
+
+### Battery Efficiency Loss
+
+**Charging loss (5% of energy in):**
+
+```yaml
+state: >
+  {{ (states('sensor.battery_charged') | float(0) * 0.05) | round(3) }}
+```
+
+**Discharging loss (5.26% = 5/(100-5)):**
+
+```yaml
+state: >
+  {{ (states('sensor.battery_discharged') | float(0) * 0.0526) | round(3) }}
+```
+
+**Total efficiency loss:**
+
+```yaml
+state: >
+  {% set charge_loss = states('sensor.battery_charged') | float(0) * 0.05 %}
+  {% set discharge_loss = states('sensor.battery_discharged') | float(0) * 0.0526 %}
+  {{ (charge_loss + discharge_loss) | round(3) }}
+```
+
+### Inverter Efficiency
+
+**Solar production loss (gross - net):**
+
+```yaml
+state: >
+  {% set tesla_solar = states('sensor.tesla_solar_generated') | float(0) %}
+  {% set emporia_solar = states('sensor.emporia_solar') | float(0) %}
+  {% set diff = tesla_solar - emporia_solar %}
+  {{ [diff, 0] | max | round(3) }}
+```
+
+### Net Energy Import/Export
+
+**Net grid energy (import - export):**
+
+```yaml
+state: >
+  {% set imported = states('sensor.grid_imported') | float(0) %}
+  {% set exported = states('sensor.grid_exported') | float(0) %}
+  {{ (imported - exported) | round(3) }}
+```
+
+## InfluxDB Integration
+
+### Querying Energy Data
+
+```flux
+// Hourly max values (for daily-resetting sensors)
+from(bucket: "iot")
+  |> range(start: -30d)
+  |> filter(fn: (r) => r["entity_id"] == "west_sacramento_battery_charged")
+  |> filter(fn: (r) => r["_field"] == "value")
+  |> aggregateWindow(every: 1h, fn: max, createEmpty: false)
+
+// Daily totals
+from(bucket: "iot")
+  |> range(start: -30d)
+  |> filter(fn: (r) => r["entity_id"] == "solar_energy_today")
+  |> aggregateWindow(every: 1d, fn: max, createEmpty: false)
+
+// Difference calculations
+import "experimental"
+solar = from(bucket: "iot")
+  |> range(start: -7d)
+  |> filter(fn: (r) => r["entity_id"] == "solar_generated")
+consumed = from(bucket: "iot")
+  |> range(start: -7d)
+  |> filter(fn: (r) => r["entity_id"] == "home_consumed")
+experimental.join(
+  left: solar,
+  right: consumed,
+  fn: (left, right) => ({left with diff: left._value - right._value})
+)
+```
+
+### Writing Sensor Data to InfluxDB
+
+```python
+from influxdb_client import InfluxDBClient, Point
+from datetime import datetime
+
+client = InfluxDBClient(url="http://192.168.1.63:8086",
+                        token="token",
+                        org="home")
+write_api = client.write_api()
+
+point = Point("home_assistant") \
+    .tag("entity_id", "solar_energy_today") \
+    .tag("domain", "sensor") \
+    .field("value", 12.345) \
+    .time(datetime.utcnow())
+
+write_api.write(bucket="iot", record=point)
+```
+
+## Backfilling Statistics
+
+### Using recorder.import_statistics
+
+**Service call format:**
+
+```yaml
+service: recorder.import_statistics
+data:
+  statistic_id: "sensor.battery_charging_loss"
+  source: "recorder"
+  unit_of_measurement: "kWh"
+  has_mean: false
+  has_sum: true
+  stats:
+    - start: "2024-12-01T00:00:00+00:00"
+      state: 0.125
+      sum: 0.125
+    - start: "2024-12-01T01:00:00+00:00"
+      state: 0.250
+      sum: 0.250
+```
+
+### Python Backfill Script Pattern
+
+```python
+#!/usr/bin/env python3
+from datetime import datetime, timedelta, timezone
+import requests
+
+HA_URL = "http://homeassistant.local:8123"
+HA_TOKEN = "your_token_here"
+
+def import_statistics(entity_id: str, statistics: list):
+    """Import statistics to Home Assistant."""
+    headers = {
+        "Authorization": f"Bearer {HA_TOKEN}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "statistic_id": entity_id,
+        "source": "recorder",
+        "unit_of_measurement": "kWh",
+        "has_mean": False,
+        "has_sum": True,
+        "stats": statistics,
+    }
+
+    response = requests.post(
+        f"{HA_URL}/api/services/recorder/import_statistics",
+        headers=headers,
+        json=payload,
+    )
+
+    return response.status_code == 200
+
+# Calculate hourly loss values
+statistics = []
+for hour in range(24):
+    timestamp = datetime.now(timezone.utc).replace(hour=hour, minute=0, second=0)
+    value = battery_charged[hour] * 0.05
+
+    statistics.append({
+        "start": timestamp.isoformat(),
+        "state": value,
+        "sum": value,
+    })
+
+# Import to HA
+import_statistics("sensor.battery_charging_loss", statistics)
+```
+
+### Backfill from InfluxDB
+
+```python
+from influxdb_client import InfluxDBClient
+
+def query_influxdb_hourly(entity_id: str, days: int) -> dict:
+    """Query InfluxDB for hourly data."""
+    client = InfluxDBClient(url="http://192.168.1.63:8086",
+                           token="token",
+                           org="home")
+    query_api = client.query_api()
+
+    query = f'''
+    from(bucket: "iot")
+      |> range(start: -{days}d)
+      |> filter(fn: (r) => r["entity_id"] == "{entity_id}")
+      |> filter(fn: (r) => r["_field"] == "value")
+      |> aggregateWindow(every: 1h, fn: max, createEmpty: false)
+    '''
+
+    result = query_api.query(query)
+
+    data = {}
+    for table in result:
+        for record in table.records:
+            timestamp = record.get_time()
+            value = record.get_value()
+            # Round to start of hour
+            hour_key = timestamp.replace(minute=0, second=0, microsecond=0)
+            data[hour_key] = value
+
+    client.close()
+    return data
+
+# Use the data
+battery_charged = query_influxdb_hourly("west_sacramento_battery_charged", 30)
+charging_loss = {ts: round(val * 0.05, 3) for ts, val in battery_charged.items()}
+```
+
+## Energy Dashboard Configuration
+
+### Configuring Energy Sources
+
+**Settings → Dashboards → Energy**
+
+1. **Grid Consumption**
+
+   - Entity: `sensor.grid_imported`
+   - Must be: `state_class: total_increasing`
+
+2. **Solar Production**
+
+   - Entity: `sensor.solar_generated`
+   - Must be: `state_class: total_increasing`
+
+3. **Battery Storage**
+
+   - Energy going in: `sensor.battery_charged`
+   - Energy coming out: `sensor.battery_discharged`
+   - Both must be: `state_class: total_increasing`
+
+4. **Individual Devices** (optional)
+   - Entity: `sensor.device_energy`
+   - Must be: `state_class: total_increasing`
+
+### Validation
+
+**Check for issues:**
+
+- No negative values in graphs
+- Totals should balance: `solar + grid = home + battery + exported + losses`
+- Daily reset sensors work correctly
+- No gaps in historical data
+
+## Utility Meters
+
+### Creating Time-Based Meters
+
+```yaml
+utility_meter:
+  # Weekly energy tracking (resets Monday)
+  solar_weekly:
+    source: sensor.solar_generated
+    name: Solar Weekly
+    cycle: weekly
+
+  # Monthly tracking
+  home_usage_monthly:
+    source: sensor.home_usage
+    name: Home Usage Monthly
+    cycle: monthly
+
+  # Quarterly tracking
+  grid_imported_quarterly:
+    source: sensor.grid_imported
+    name: Grid Imported Quarterly
+    cycle: quarterly
+
+  # Never resets (lifetime)
+  solar_lifetime:
+    source: sensor.solar_generated
+    name: Solar Lifetime
+    cycle: quarterly
+    offset:
+      days: 0 # Never offset, effectively lifetime
+```
+
+### Peak/Off-Peak Tariffs
+
+```yaml
+utility_meter:
+  grid_import:
+    source: sensor.grid_imported
+    name: Grid Import
+    tariffs:
+      - peak
+      - off_peak
+      - super_off_peak
+
+# Automation to switch tariffs
+automation:
+  - alias: "Switch to Peak Rate"
+    trigger:
+      - platform: time
+        at: "16:00:00"
+    action:
+      - service: utility_meter.select_tariff
+        target:
+          entity_id: utility_meter.grid_import
+        data:
+          tariff: peak
+```
+
+## Statistics Debugging
+
+### Check Statistics Data
+
+**Developer Tools → Statistics**
+
+- Select entity
+- View min/max/mean values
+- Check for gaps or anomalies
+- Identify negative values
+
+### Fix Statistics Issues
+
+```yaml
+# Service call to adjust statistics
+service: recorder.adjust_statistics
+data:
+  statistic_id: "sensor.battery_charging_loss"
+  start_time: "2024-12-01T00:00:00+00:00"
+  adjustment: -5.0 # Adjust by this amount
+  adjustment_unit_of_measurement: "kWh"
+```
+
+### Clear Bad Statistics
+
+```bash
+# SQLite commands to manually fix statistics
+# ⚠️ Backup database first!
+
+sqlite3 /opt/homeassistant/config/home-assistant_v2.db
+
+# View statistics for entity
+SELECT * FROM statistics_meta WHERE statistic_id = 'sensor.battery_charging_loss';
+
+# Find the id (e.g., 1234)
+SELECT * FROM statistics WHERE metadata_id = 1234 ORDER BY start DESC LIMIT 10;
+
+# Delete specific bad records
+DELETE FROM statistics WHERE metadata_id = 1234 AND start >= '2024-12-01';
+
+# Rebuild statistics
+# (restart Home Assistant after manual DB changes)
+```
+
+## Performance Optimization
+
+### Reduce Recorder Load
+
+```yaml
+recorder:
+  # Keep history for 7 days only
+  purge_keep_days: 7
+
+  # Commit less frequently
+  commit_interval: 30 # Default is 5 seconds
+
+  # Exclude high-frequency sensors
+  exclude:
+    entity_globs:
+      - sensor.*_last_updated
+      - sensor.*_rssi
+      - sensor.*_wifi_*
+    domains:
+      - sun
+      - weather
+```
+
+### Use Long-Term Statistics
+
+```yaml
+# Instead of storing every state change, use statistics
+sensor:
+  - platform: template
+    sensors:
+      energy_daily_avg:
+        value_template: >
+          {{ state_attr('sensor.energy_meter', 'mean') }}
+```
+
+## Best Practices Summary
+
+1. **Always use `state_class: total_increasing`** for energy sensors
+2. **Clamp calculated values** to zero: `{{ [value, 0] | max }}`
+3. **Round energy values** to 3 decimals: `| round(3)`
+4. **Use fallbacks** for unavailable sensors: `| float(0)`
+5. **Test templates** in Developer Tools before deploying
+6. **Backup before** importing/adjusting statistics
+7. **Monitor for negatives** after any energy sensor changes
+8. **Validate totals** match expected energy balance
+9. **Keep recorder lean** by excluding unnecessary entities
+10. **Use InfluxDB** for long-term, high-resolution data if needed

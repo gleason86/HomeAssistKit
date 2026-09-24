@@ -1,0 +1,396 @@
+# Environment Configuration
+
+## Environment Types
+
+### Production Environment
+
+**Location:** Raspberry Pi at `192.168.1.110`
+
+```yaml
+host: 192.168.1.110
+user: david
+ha_config_path: /opt/homeassistant/config/
+ha_runtime: docker
+container_name: homeassistant
+restart_command: docker restart homeassistant
+```
+
+**Characteristics:**
+
+- Home Assistant runs in Docker container
+- Configuration at `/opt/homeassistant/config/`
+- Always deploy via SCP + SSH (never direct edit)
+- Runs 24/7 with live automations and devices
+
+**Access Pattern:**
+
+```bash
+# Copy files to home directory first
+scp localfile.yaml david@192.168.1.110:/home/david/
+
+# Then SSH and deploy with sudo
+ssh david@192.168.1.110
+sudo cp /home/david/localfile.yaml /opt/homeassistant/config/
+docker restart homeassistant
+```
+
+### Development Environment
+
+**Location:** Local Windows machine
+
+```yaml
+os: Windows 10/11
+shell: PowerShell
+workspace: C:\Users\david\Repos\ha_brain
+ha_config_source: homeassistant-config/
+```
+
+**Characteristics:**
+
+- Edit files locally in workspace
+- Test YAML syntax locally when possible
+- Use git for version control
+- Deploy to production via SCP
+
+## Shell Environment: PowerShell
+
+### Default Shell
+
+The agent operates in **Windows PowerShell** by default.
+
+**Important Gotchas:**
+
+#### 1. Path Separators
+
+```powershell
+# ✅ PowerShell accepts both
+C:\Users\david\file.txt
+C:/Users/david/file.txt
+
+# But prefer backslash in PowerShell
+Get-Content C:\Users\david\file.txt
+```
+
+#### 2. Command Syntax Differences
+
+**Bash vs PowerShell:**
+
+```powershell
+# Bash: cat file.txt
+# PowerShell:
+Get-Content file.txt
+# or short alias:
+cat file.txt  # works but Get-Content is preferred
+
+# Bash: ls -la
+# PowerShell:
+Get-ChildItem -Force
+# or alias:
+ls  # works but may have different behavior
+
+# Bash: grep "pattern" file.txt
+# PowerShell:
+Select-String -Pattern "pattern" -Path file.txt
+
+# Bash: export VAR=value
+# PowerShell:
+$env:VAR = "value"
+
+# Bash: echo "text" > file.txt
+# PowerShell:
+"text" | Out-File file.txt
+# or:
+Set-Content -Path file.txt -Value "text"
+```
+
+#### 3. Quoting and Escaping
+
+```powershell
+# ❌ Single quotes don't expand variables
+$name = "World"
+'Hello $name'  # Outputs: Hello $name
+
+# ✅ Double quotes expand variables
+"Hello $name"  # Outputs: Hello World
+
+# Escaping with backtick (not backslash!)
+"Cost: `$100"  # Outputs: Cost: $100
+
+# Special characters in paths
+Get-Content "C:\Users\david\My Documents\file.txt"
+```
+
+#### 4. Piping and Output
+
+```powershell
+# PowerShell pipes objects, not text
+Get-Process | Where-Object {$_.CPU -gt 100}
+
+# To work with text like bash:
+Get-Process | Out-String | Select-String "chrome"
+```
+
+#### 5. Exit Codes
+
+```powershell
+# Check last exit code
+$LASTEXITCODE
+
+# Bash: $?
+# PowerShell: $? (but different meaning - success/fail, not exit code)
+```
+
+#### 6. Array and List Operations
+
+```powershell
+# Arrays use @()
+$files = @("file1.txt", "file2.txt", "file3.txt")
+
+# Access elements
+$files[0]  # file1.txt
+
+# Length
+$files.Length  # or $files.Count
+```
+
+#### 7. Command Execution
+
+```powershell
+# Execute external commands
+& "C:\Program Files\tool.exe" --arg value
+
+# Call expressions
+Invoke-Expression "Get-Process"
+
+# Or use:
+cmd /c "some-command"  # Run in cmd.exe
+```
+
+#### 8. Home Directory
+
+```powershell
+# Bash: ~/ or $HOME
+# PowerShell:
+$HOME  # C:\Users\david
+$env:USERPROFILE  # Same as $HOME
+
+# cd ~/ works in PowerShell
+cd ~
+```
+
+### PowerShell Best Practices for Agents
+
+1. **Use full cmdlet names in scripts** (not aliases) for clarity
+
+   ```powershell
+   # ✅ Clear
+   Get-Content file.txt
+
+   # ❌ Ambiguous in documentation
+   cat file.txt
+   ```
+
+2. **Handle paths cross-platform aware**
+
+   ```powershell
+   # Use Join-Path for path construction
+   $configPath = Join-Path $HOME "Repos\ha_brain\config.yaml"
+   ```
+
+3. **Check command availability**
+
+   ```powershell
+   # Check if command exists
+   if (Get-Command "docker" -ErrorAction SilentlyContinue) {
+       docker ps
+   }
+   ```
+
+4. **Error handling**
+
+   ```powershell
+   # Stop on errors
+   $ErrorActionPreference = "Stop"
+
+   # Try-catch blocks
+   try {
+       Get-Content nonexistent.txt
+   } catch {
+       Write-Error "File not found: $_"
+   }
+   ```
+
+5. **SSH from PowerShell**
+
+   ```powershell
+   # PowerShell has built-in SSH client (Windows 10+)
+   ssh david@192.168.1.110
+   scp file.txt david@192.168.1.110:/home/david/
+
+   # No need for special quoting usually
+   ssh david@192.168.1.110 "ls -la /home/david"
+   ```
+
+### Common Pitfalls
+
+#### Pitfall 1: Command Not Found
+
+```powershell
+# ❌ Bash command doesn't exist
+grep "pattern" file.txt
+# Error: The term 'grep' is not recognized
+
+# ✅ Use PowerShell equivalent
+Select-String -Pattern "pattern" -Path file.txt
+```
+
+#### Pitfall 2: Path with Spaces
+
+```powershell
+# ❌ Will fail
+Get-Content C:\My Documents\file.txt
+
+# ✅ Quote the path
+Get-Content "C:\My Documents\file.txt"
+
+# ✅ Or escape spaces
+Get-Content C:\My` Documents\file.txt
+```
+
+#### Pitfall 3: Line Endings
+
+```powershell
+# Windows uses CRLF (\r\n)
+# Linux uses LF (\n)
+
+# When creating files for Linux deployment:
+$content | Out-File -FilePath file.txt -Encoding UTF8 -NoNewline
+```
+
+#### Pitfall 4: Execution Policy
+
+```powershell
+# Scripts may not run due to execution policy
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+# Or bypass for single script:
+PowerShell -ExecutionPolicy Bypass -File script.ps1
+```
+
+## Remote Access Patterns
+
+### SSH from PowerShell to Linux Host
+
+```powershell
+# Standard SSH (works in PowerShell)
+ssh david@192.168.1.110
+
+# SCP files
+scp homeassistant-config\configuration.yaml david@192.168.1.110:/home/david/
+
+# Execute remote command
+ssh david@192.168.1.110 "docker ps"
+
+# Multi-line remote commands (use semicolons)
+ssh david@192.168.1.110 "cd /opt/homeassistant; ls -la"
+```
+
+### File Transfer Considerations
+
+```powershell
+# ✅ PowerShell to Linux via SCP
+# Windows paths with backslashes work
+scp C:\Users\david\Repos\ha_brain\config.yaml david@192.168.1.110:/home/david/
+
+# ✅ Batch transfer multiple files
+scp homeassistant-config\*.yaml david@192.168.1.110:/home/david/configs/
+
+# ❌ Don't use PowerShell cmdlets for remote Linux files
+# This won't work:
+Copy-Item \\192.168.1.110\home\david\file.txt .\  # Not a Windows share!
+
+# ✅ Use SCP instead:
+scp david@192.168.1.110:/home/david/file.txt .\
+```
+
+## Environment Variables
+
+### Key Variables to Know
+
+```powershell
+# User and paths
+$env:USERNAME          # Current user
+$env:USERPROFILE       # C:\Users\david
+$env:HOMEDRIVE         # C:
+$env:HOMEPATH          # \Users\david
+
+# PowerShell specific
+$PSVersionTable        # PowerShell version info
+$pwd                   # Current directory (Get-Location)
+$HOME                  # Home directory
+
+# Custom for this project
+$env:HA_HOST = "192.168.1.110"
+$env:HA_USER = "david"
+```
+
+## Working Directory Awareness
+
+### Typical Workflow
+
+```powershell
+# Start in workspace root
+cd C:\Users\david\Repos\ha_brain
+
+# Verify location
+Get-Location  # or: pwd
+
+# Edit local config
+code homeassistant-config\configuration.yaml
+
+# Deploy to remote
+scp homeassistant-config\configuration.yaml david@192.168.1.110:/home/david/
+
+# SSH and apply
+ssh david@192.168.1.110
+# Now in bash on Linux host:
+sudo cp /home/david/configuration.yaml /opt/homeassistant/config/
+docker restart homeassistant
+exit  # Back to PowerShell
+```
+
+## Cross-Platform Compatibility
+
+### When Writing Scripts
+
+If a script might run on both Windows and Linux:
+
+```powershell
+# Detect OS
+if ($IsWindows -or $env:OS -match "Windows") {
+    # Windows-specific logic
+    $separator = "\"
+} else {
+    # Linux-specific logic
+    $separator = "/"
+}
+
+# Use Path cmdlets (cross-platform)
+$configPath = Join-Path $HOME "config" "file.yaml"
+```
+
+### Git Bash vs PowerShell
+
+Some users have Git Bash installed. If switching:
+
+```bash
+# In Git Bash (bash syntax)
+export VAR=value
+cat file.txt
+
+# In PowerShell (different syntax)
+$env:VAR = "value"
+Get-Content file.txt
+```
+
+**Rule:** Default to PowerShell commands unless user specifies bash.

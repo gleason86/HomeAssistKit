@@ -1,0 +1,199 @@
+# Home Assistant Configuration & Operations
+
+## Configuration Management
+
+### File Structure
+
+- Split `configuration.yaml` into **packages** and domain-specific files when possible
+- Keep sensor templates organized by function (energy, presence, climate, etc.)
+- Use consistent naming: `area_device_function` (e.g., `hallway_motion_presence`)
+
+### Template Sensors
+
+- **Always use `state_class: total_increasing`** for energy loss/consumption sensors
+  - ❌ `state_class: total` allows negative deltas when source sensors reset at midnight
+  - ✅ `state_class: total_increasing` ignores decreases and only accumulates increases
+- Clamp calculated values to prevent negatives: `{{ [value, 0] | max }}`
+- Use `| float(0)` for safe type conversion with fallback defaults
+- Round energy values to 3 decimal places: `| round(3)`
+
+### Energy Sensors Best Practices
+
+```yaml
+# ✅ GOOD - Prevents negative totals
+- name: "Battery Charging Loss"
+  unique_id: battery_charging_loss
+  unit_of_measurement: "kWh"
+  device_class: energy
+  state_class: total_increasing # Ignores decreases
+  state: >
+    {{ (states('sensor.battery_charged') | float(0) * 0.05) | round(3) }}
+
+# ❌ BAD - Allows negative deltas
+- name: "Battery Charging Loss"
+  state_class: total # Will create negative history on resets
+  state: >
+    {{ states('sensor.battery_charged') | float(0) * 0.05 }}
+```
+
+### YAML Editing
+
+- Maintain consistent indentation (2 spaces)
+- Keep diffs small - don't reorder keys unnecessarily
+- Validate syntax with `yamllint` after changes
+- Always compare local vs deployed config files before assuming a fix is applied
+
+## Deployment Process
+
+### 🔒 Configuration Sync Requirement
+
+**CRITICAL: Always pull the running config before making changes!**
+
+This prevents:
+
+- Overwriting production changes made directly on the server
+- Deploying stale local configs
+- Losing uncommitted production hotfixes
+- Merge conflicts between local and production
+
+### Pattern: Sync → Edit → Deploy
+
+#### 1. **Sync from Production**
+
+```powershell
+# Pull current running configuration
+scp david@192.168.1.110:/opt/homeassistant/config/configuration.yaml `
+    homeassistant-config\configuration.yaml.running
+
+# Compare with local
+code --diff homeassistant-config\configuration.yaml `
+             homeassistant-config\configuration.yaml.running
+
+# If differences exist:
+# - Review carefully
+# - Update local to match production OR
+# - Document why local should override production
+# - Get user approval
+```
+
+#### 2. **Edit Locally**
+
+```powershell
+# Edit in workspace (now synced with production)
+code homeassistant-config\configuration.yaml
+```
+
+#### 3. **Deploy to Remote**
+
+```powershell
+# Copy config to remote
+scp homeassistant-config\configuration.yaml david@192.168.1.110:/home/david/
+
+# SSH to remote and deploy
+ssh david@192.168.1.110
+sudo cp /home/david/configuration.yaml /opt/homeassistant/config/
+docker restart homeassistant  # or systemctl restart if not Docker
+```
+
+#### 4. **Validate & Sync Back**
+
+```powershell
+# After successful deployment, update the remote tracking copy
+Copy-Item homeassistant-config\configuration.yaml `
+          homeassistant-config\configuration.remote.yaml
+git add homeassistant-config\configuration.remote.yaml
+git commit -m "Sync: Update remote config tracking"
+```
+
+### Pre-Deployment Checklist
+
+- [ ] Verify file exists and is syntactically valid
+- [ ] Check for duplicate configs (e.g., `configuration.yaml` vs `configuration.remote.yaml`)
+- [ ] Identify the actual deployment path (`/opt/homeassistant/config/`, `/config/`, etc.)
+- [ ] Know how HA is running (Docker container vs systemd service)
+- [ ] Have a rollback plan (backup config or git revert)
+
+## Automations
+
+### Structure
+
+- Use `id:` fields for stable references
+- Use `choose` and `conditions` over duplicating similar automations
+- Add comments at the top explaining:
+  - Trigger(s)
+  - Expected behavior
+  - Safety considerations
+
+### Naming Convention
+
+- Use `area-purpose` style: `hallway_night_lighting`, `office_presence_heating`
+
+## Custom Integrations
+
+### Architecture
+
+- Keep API clients in **shared libraries**, not integration modules
+- Make integrations **async** using HA helpers (`DataUpdateCoordinator`)
+- Use **config flows** for setup (not YAML-only)
+- Add minimal tests validating setup and common flows
+
+### Error Handling
+
+- Use proper async patterns and type hints
+- Prefer extending existing helpers over duplicating logic
+- Log errors with context for debugging
+
+## Statistics & History
+
+### Backfilling Data
+
+- Use `recorder.import_statistics` service for historical data
+- Format with proper `start`, `state`, and `sum` fields
+- Match `unit_of_measurement` and `state_class` exactly
+- Test with dry-run mode first
+
+### Fixing Negative Statistics
+
+- Check source sensors for resets or negative values
+- Verify template sensors use `total_increasing` not `total`
+- Re-run backfill scripts after fixing templates
+- May need to clear/rebuild long-term statistics
+
+## Safety & Risk Management
+
+### Before Making Changes
+
+- Do not assume direct access to production
+- Express changes as **configuration updates**, not direct actions
+- Include a testing plan: "apply in dev → verify logs → roll to prod"
+
+### Risk Assessment Template
+
+For any significant change, document:
+
+```
+RISK ASSESSMENT
+- Potential side effects: [what could break]
+- Blast radius: [single entity, room, whole house]
+- Rollback plan: [how to revert]
+- Validation: [how to test it worked]
+```
+
+## MCP Tool Usage
+
+### Read-Only First
+
+- Use read tools to inspect before modifying
+- Summarize what exists instead of reinventing
+
+### State-Changing Operations
+
+- Default to small blast radius (single entity)
+- Prefer short-duration actions
+- Generate patches instead of direct mutations when possible
+
+### Service Calls
+
+- Verify entity IDs exist before calling services
+- Use domain-specific services (e.g., `light.turn_on` not `homeassistant.turn_on`)
+- Include appropriate data fields (brightness, temperature, etc.)

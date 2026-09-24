@@ -5,10 +5,13 @@ MCP (Model Context Protocol) server for Home Assistant integration. This server 
 ## Overview
 
 This MCP server exposes tools that allow AI agents to interact with Home Assistant:
-- Read entity states and configurations
+
+- Read entity states, configurations, and calendars
 - Search entities by name or domain
-- Query historical state data
-- Call services (turn on/off devices, run scripts)
+- Query historical state data and event logs
+- Call services with entity, area, or device targeting
+- Render Jinja2 templates for dynamic queries
+- Fire events to trigger automations
 
 ## Setup
 
@@ -43,8 +46,8 @@ token: "<your-token-here>"
 
 Copy the `mcp.json` from repo root to your Cursor MCP config, or add manually:
 
-**Windows**: `%APPDATA%\Cursor\User\globalStorage\cursor.mcp\mcp.json`
-**macOS**: `~/Library/Application Support/Cursor/User/globalStorage/cursor.mcp/mcp.json`
+**Windows**: `C:\Users\<username>\.cursor\mcp.json`
+**macOS**: `~/.cursor/mcp.json`
 
 ```json
 {
@@ -70,15 +73,22 @@ Restart Cursor to load the MCP server. Claude should now have access to the HA t
 ## Available Tools
 
 ### Read-only (safe)
+
 - `ha_list_entities` - List all entities, optionally filtered by domain
 - `ha_get_state` - Get current state and attributes of an entity
 - `ha_search_entities` - Search entities by name or ID
 - `ha_get_history` - Query historical state changes
 - `ha_entity_summary` - Get count of entities by domain
 - `ha_get_services` - List available services
+- `ha_get_logbook` - Get event log with context (what happened and why)
+- `ha_get_config` - Get HA instance info (version, location, units)
+- `ha_get_calendars` - List calendars and upcoming events
+- `ha_render_template` - Evaluate Jinja2 templates dynamically
 
 ### Write (use with care)
-- `ha_call_service` - Call a Home Assistant service (turn on/off, etc.)
+
+- `ha_call_service` - Call a service (supports entity, area, or device targeting)
+- `ha_fire_event` - Fire custom events to trigger automations
 
 ## Example Usage (in Cursor)
 
@@ -88,6 +98,10 @@ Once configured, you can ask Claude things like:
 - "Show me the temperature sensor history for the last 6 hours"
 - "What entities do I have in my Home Assistant?"
 - "Turn off the living room lights"
+- "Turn off all lights in the kitchen" (area targeting)
+- "What happened in the last hour?" (logbook)
+- "What's on my calendar this week?"
+- "What's the average temperature?" (template)
 
 ## Development
 

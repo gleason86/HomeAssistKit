@@ -49,9 +49,7 @@ class HomeAssistantClient:
         # Look for credentials relative to repo root
         possible_paths = [
             Path("credentials/ha_api.yaml"),
-            Path(__file__).parent.parent.parent.parent
-            / "credentials"
-            / "ha_api.yaml",
+            Path(__file__).parent.parent.parent.parent / "credentials" / "ha_api.yaml",
         ]
 
         for cred_path in possible_paths:
@@ -226,7 +224,8 @@ class HomeAssistantClient:
         if data:
             payload.update(data)
         if target:
-            payload["target"] = target
+            # Merge target into payload (entity_id, area_id, device_id at root level)
+            payload.update(target)
 
         client = await self._get_client()
         response = await client.post(
@@ -279,6 +278,107 @@ class HomeAssistantClient:
         response = await client.get("/api/error_log")
         response.raise_for_status()
         return response.text
+
+    async def get_logbook(
+        self,
+        entity_id: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Get logbook entries (event log with context).
+
+        Args:
+            entity_id: Optional entity ID to filter
+            start_time: Start of period (default: 1 day ago)
+            end_time: End of period (default: now)
+
+        Returns:
+            List of logbook entries with event context
+        """
+        if start_time is None:
+            start_time = datetime.now() - timedelta(days=1)
+        if end_time is None:
+            end_time = datetime.now()
+
+        params: dict[str, Any] = {
+            "end_time": end_time.isoformat(),
+        }
+        if entity_id:
+            params["entity"] = entity_id
+
+        client = await self._get_client()
+        url = f"/api/logbook/{start_time.isoformat()}"
+        response = await client.get(url, params=params)
+        response.raise_for_status()
+        return response.json()
+
+    async def render_template(self, template: str) -> str:
+        """
+        Render a Jinja2 template.
+
+        Args:
+            template: Jinja2 template string
+
+        Returns:
+            Rendered template result
+
+        Example:
+            await client.render_template("{{ states('sensor.temperature') }}")
+        """
+        client = await self._get_client()
+        response = await client.post(
+            "/api/template",
+            json={"template": template},
+        )
+        response.raise_for_status()
+        return response.text
+
+    async def get_calendars(self) -> list[dict[str, Any]]:
+        """Get list of all calendar entities."""
+        client = await self._get_client()
+        response = await client.get("/api/calendars")
+        if response.status_code == 404:
+            # Calendar integration not available
+            return []
+        response.raise_for_status()
+        return response.json()
+
+    async def get_calendar_events(
+        self,
+        entity_id: str,
+        start: datetime | None = None,
+        end: datetime | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Get events from a calendar entity.
+
+        Args:
+            entity_id: Calendar entity ID
+            start: Start of period (default: now)
+            end: End of period (default: 7 days from now)
+
+        Returns:
+            List of calendar events
+        """
+        if start is None:
+            start = datetime.now()
+        if end is None:
+            end = datetime.now() + timedelta(days=7)
+
+        client = await self._get_client()
+        response = await client.get(
+            f"/api/calendars/{entity_id}",
+            params={
+                "start": start.isoformat(),
+                "end": end.isoformat(),
+            },
+        )
+        if response.status_code == 404:
+            # Calendar entity not found
+            return []
+        response.raise_for_status()
+        return response.json()
 
     # =========================================================================
     # Convenience Methods

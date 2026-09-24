@@ -1,11 +1,42 @@
 # MCP HA Server - Validation Log
 
 **Date:** 2025-11-26
-**Status:** ✅ Complete
+**Status:** ✅ Complete & Verified
 
 ## Summary
 
 Review of `README.md` setup instructions against actual codebase implementation.
+
+## MCP Integration Test (Live)
+
+| Test            | Result                                                    |
+| --------------- | --------------------------------------------------------- |
+| Entity Summary  | ✅ 381 entities across 22 domains                         |
+| Search Entities | ✅ Found 50 results for "light"                           |
+| Get State       | ✅ `light.living_room_main_lights` = on (brightness: 255) |
+| MCP Config Path | ✅ `C:\Users\david\.cursor\mcp.json`                      |
+
+## Comprehensive Tool Test (2025-11-26)
+
+All 12 MCP tools tested against live Home Assistant instance (v2025.11.3):
+
+| Tool               | Result | Details                                |
+| ------------------ | ------ | -------------------------------------- |
+| ha_get_config      | ✅     | HA v2025.11.3 @ Home                   |
+| ha_entity_summary  | ✅     | 381 entities across 22 domains         |
+| ha_list_entities   | ✅     | All: 381 entities, Lights: 23 entities |
+| ha_get_state       | ✅     | Successfully retrieved entity states   |
+| ha_search_entities | ✅     | Found 50 matches for 'light'           |
+| ha_get_history     | ✅     | Retrieved history for sensor entities  |
+| ha_get_services    | ✅     | Found 209 services across 50 domains   |
+| ha_get_logbook     | ✅     | Found 24 entries in last hour          |
+| ha_render_template | ✅     | Jinja2 templates rendering correctly   |
+| ha_get_calendars   | ✅     | No calendars configured (API works)    |
+| ha_fire_event      | ✅     | Fired 'mcp_test_event' successfully    |
+| ha_call_service    | ✅     | logger.set_level executed successfully |
+
+**Test Script:** `tests/test_all_tools.py`
+**Run Command:** `python -m tests.test_all_tools`
 
 ---
 
@@ -13,24 +44,24 @@ Review of `README.md` setup instructions against actual codebase implementation.
 
 ### 🔴 Critical
 
-| # | Issue | Location | Impact |
-|---|-------|----------|--------|
-| 1 | **YAML syntax error** - Extra quote at end of token value | `credentials/ha_api.yaml:14` | Server will fail to load credentials |
-| 2 | **Credential path bug** - Uses 5 `.parent` calls instead of 4 | `ha_client.py:52` | Credential loading fails when running via MCP |
+| #   | Issue                                                         | Location                     | Impact                                        |
+| --- | ------------------------------------------------------------- | ---------------------------- | --------------------------------------------- |
+| 1   | **YAML syntax error** - Extra quote at end of token value     | `credentials/ha_api.yaml:14` | Server will fail to load credentials          |
+| 2   | **Credential path bug** - Uses 5 `.parent` calls instead of 4 | `ha_client.py:52`            | Credential loading fails when running via MCP |
 
 ### 🟡 Medium
 
-| # | Issue | Location | Impact |
-|---|-------|----------|--------|
-| 3 | **mcp.json mismatch** - README shows absolute path, actual uses relative | `README.md:55` vs `mcp.json` | User confusion; relative paths may not work |
-| 4 | **credentials/README.md inconsistency** - References `home_assistant.yaml` | `credentials/README.md:13` | User may create wrong filename |
+| #   | Issue                                                                      | Location                     | Impact                                      |
+| --- | -------------------------------------------------------------------------- | ---------------------------- | ------------------------------------------- |
+| 3   | **mcp.json mismatch** - README shows absolute path, actual uses relative   | `README.md:55` vs `mcp.json` | User confusion; relative paths may not work |
+| 4   | **credentials/README.md inconsistency** - References `home_assistant.yaml` | `credentials/README.md:13`   | User may create wrong filename              |
 
 ### 🟢 Minor
 
-| # | Issue | Location | Impact |
-|---|-------|----------|--------|
-| 5 | Unused `websockets` dependency | `pyproject.toml:8` | Extra dependency (future use?) |
-| 6 | Empty test suite | `tests/__init__.py` | No automated testing |
+| #   | Issue                          | Location            | Impact                         |
+| --- | ------------------------------ | ------------------- | ------------------------------ |
+| 5   | Unused `websockets` dependency | `pyproject.toml:8`  | Extra dependency (future use?) |
+| 6   | Empty test suite               | `tests/__init__.py` | No automated testing           |
 
 ---
 
@@ -96,6 +127,7 @@ Path(__file__).parent.parent.parent.parent.parent / "credentials" / "ha_api.yaml
 ### Issue 3: mcp.json Path Format
 
 **README shows (absolute path):**
+
 ```json
 {
   "cwd": "C:/Users/david/Repos/ha_brain/agents/mcp_ha_server"
@@ -103,6 +135,7 @@ Path(__file__).parent.parent.parent.parent.parent / "credentials" / "ha_api.yaml
 ```
 
 **Actual mcp.json (relative path + PYTHONPATH):**
+
 ```json
 {
   "cwd": "agents/mcp_ha_server",
@@ -140,3 +173,4 @@ Expected: Server starts without errors, waiting for MCP protocol messages.
 - Token in `credentials/ha_api.yaml` is properly gitignored (security ✓)
 - Dependencies in `pyproject.toml` are valid
 - Server architecture looks correct
+- **MCP config location**: `C:\Users\<user>\.cursor\mcp.json` (not `%APPDATA%` path)

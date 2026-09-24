@@ -1,0 +1,431 @@
+# Testing & Validation
+
+## Configuration Testing
+
+### YAML Validation
+
+**Before deploying any config changes:**
+
+```powershell
+# Check YAML syntax locally
+# Install yamllint if not present:
+pip install yamllint
+
+# Validate a file
+yamllint homeassistant-config\configuration.yaml
+
+# Validate with custom config
+yamllint -c .yamllint homeassistant-config\
+```
+
+**Common YAML Issues:**
+
+- Mixed tabs and spaces (use spaces only)
+- Incorrect indentation (must be 2 spaces per level)
+- Missing colons after keys
+- Unquoted special characters in strings
+
+### Home Assistant Config Check
+
+```powershell
+# On production server, check config before restart
+ssh david@192.168.1.110
+docker exec homeassistant hass --script check_config -c /config
+
+# Or via HA CLI if installed
+ha core check
+```
+
+### Template Testing
+
+Test Jinja2 templates in HA Developer Tools:
+
+1. Navigate to **Developer Tools → Template**
+2. Paste template code:
+   ```jinja2
+   {{ (states('sensor.battery_charged') | float(0) * 0.05) | round(3) }}
+   ```
+3. Verify output before deploying
+
+**Template Testing Checklist:**
+
+- [ ] Test with real sensor values
+- [ ] Test with `unavailable` state
+- [ ] Test with `unknown` state
+- [ ] Test with `0` value
+- [ ] Check for negative values (use `max(0, ...)` if needed)
+
+## Integration Testing
+
+### Custom Component Validation
+
+```powershell
+# Navigate to integration directory
+cd agents\mcp_ha_server
+
+# Run unit tests
+pytest tests\
+
+# Run with coverage
+pytest --cov=src tests\
+
+# Type checking
+mypy src\
+```
+
+### Integration Setup Testing
+
+```python
+# Test config flow
+pytest tests/test_config_flow.py -v
+
+# Test entity creation
+pytest tests/test_sensor.py -v
+
+# Test coordinator updates
+pytest tests/test_coordinator.py -v
+```
+
+### Manual Integration Testing
+
+1. **Install in HA dev environment**
+
+   ```powershell
+   # Copy to custom_components
+   scp -r integrations\my_integration david@192.168.1.110:/home/david/
+   ssh david@192.168.1.110
+   sudo cp -r /home/david/my_integration /opt/homeassistant/config/custom_components/
+   docker restart homeassistant
+   ```
+
+2. **Monitor logs**
+
+   ```bash
+   # On remote HA
+   docker logs -f homeassistant | grep my_integration
+   ```
+
+3. **Verify in UI**
+   - Check Settings → Devices & Services
+   - Verify entities are created
+   - Check entity states update correctly
+
+## Automation Testing
+
+### Dry Run Testing
+
+**Option 1: Use automation traces**
+
+1. Navigate to **Settings → Automations & Scenes**
+2. Open automation
+3. Click **⋮ → Traces**
+4. Review past executions
+
+**Option 2: Manual trigger**
+
+1. Open automation
+2. Click **Run** to trigger manually
+3. Verify expected behavior
+
+### Automation Unit Tests
+
+```yaml
+# Test automation conditions
+automation:
+  - alias: "Test: Trigger Condition"
+    id: test_trigger_condition
+    trigger:
+      - platform: state
+        entity_id: sensor.test_sensor
+    condition:
+      - condition: template
+        value_template: "{{ states('sensor.battery_level') | float > 20 }}"
+    action:
+      - service: persistent_notification.create
+        data:
+          message: "Test automation triggered"
+```
+
+### Safety Testing
+
+Before deploying automations that control devices:
+
+1. **Verify entity IDs exist**
+
+   ```yaml
+   # Developer Tools → States
+   # Search for entity_id
+   ```
+
+2. **Test actions in Developer Tools**
+
+   ```yaml
+   # Developer Tools → Services
+   service: light.turn_on
+   target:
+     entity_id: light.test_light
+   data:
+     brightness: 128
+   ```
+
+3. **Add safety limits**
+   ```yaml
+   # Example: Don't run between 11 PM and 6 AM
+   condition:
+     - condition: time
+       after: "06:00:00"
+       before: "23:00:00"
+   ```
+
+## Dashboard Testing
+
+### Visual Testing
+
+1. **Check responsiveness**
+
+   - Test on desktop
+   - Test on mobile
+   - Check different screen sizes
+
+2. **Verify all entities exist**
+
+   - All cards display data
+   - No "unavailable" entities in dashboard
+   - Charts render correctly
+
+3. **Test interactive elements**
+   - Buttons trigger expected actions
+   - Input fields update values
+   - Toggles change states
+
+### Performance Testing
+
+```yaml
+# Check dashboard load time
+# Look for slow cards or entities
+
+# Optimize by:
+- Reducing update frequency
+- Using history_stats with limited periods
+- Avoiding complex templates in card titles
+```
+
+## Statistics Testing
+
+### Backfill Validation
+
+```powershell
+# Run backfill script in dry-run mode first
+cd scripts
+python backfill_statistics.py --days 7 --dry-run
+
+# Review output before executing
+python backfill_statistics.py --days 7 --execute
+```
+
+### Energy Dashboard Validation
+
+After statistics changes:
+
+1. **Check for negative values**
+
+   - Energy Dashboard should show no negative kWh
+   - Individual sensors should accumulate positively
+
+2. **Verify totals add up**
+
+   ```
+   solar_generated = home_consumed + battery_charged + grid_exported + losses
+   ```
+
+3. **Compare with source data**
+   - Cross-reference with InfluxDB if available
+   - Check Tesla app values vs HA values
+
+## Pre-Deployment Checklist
+
+### Configuration Changes
+
+- [ ] YAML syntax validated locally
+- [ ] Templates tested in Developer Tools
+- [ ] Entity IDs verified to exist
+- [ ] Config checked on remote (if possible)
+- [ ] Backup of current config saved
+- [ ] Rollback plan documented
+
+### Integration Changes
+
+- [ ] Unit tests pass
+- [ ] Type checking passes
+- [ ] Linter passes (ruff, black, mypy)
+- [ ] Integration installs without errors
+- [ ] Entities created and updating
+- [ ] Logs show no errors
+
+### Automation Changes
+
+- [ ] Conditions tested manually
+- [ ] Actions tested in Developer Tools
+- [ ] Safety limits in place
+- [ ] Trace data looks correct
+- [ ] Tested both trigger and non-trigger paths
+
+## Post-Deployment Validation
+
+### Immediate Checks (0-5 minutes)
+
+```powershell
+# 1. Check HA container is running
+ssh david@192.168.1.110 "docker ps | grep homeassistant"
+
+# 2. Check for errors in logs
+ssh david@192.168.1.110 "docker logs --tail 50 homeassistant"
+
+# 3. Verify HA is accessible
+# Try accessing http://192.168.1.110:8123
+```
+
+### Short-term Checks (5-60 minutes)
+
+- [ ] All sensors updating
+- [ ] Automations triggering correctly
+- [ ] No error notifications in HA
+- [ ] Integrations remain connected
+- [ ] Mobile app still works
+
+### Long-term Checks (24 hours)
+
+- [ ] Daily sensors reset correctly at midnight
+- [ ] Energy dashboard accumulates properly
+- [ ] No unexpected negative values
+- [ ] Statistics data continues to flow
+- [ ] Battery/solar data matches Tesla app
+
+## Rollback Procedures
+
+### Quick Rollback (Config Changes)
+
+```powershell
+# Restore from backup
+ssh david@192.168.1.110
+sudo cp /opt/homeassistant/config/configuration.yaml.backup \
+       /opt/homeassistant/config/configuration.yaml
+docker restart homeassistant
+```
+
+### Git Rollback
+
+```powershell
+# Find the commit to revert
+git log --oneline
+
+# Revert specific commit
+git revert <commit-hash>
+
+# Or reset to previous commit (careful!)
+git reset --hard HEAD~1
+
+# Deploy reverted version
+scp homeassistant-config\configuration.yaml david@192.168.1.110:/home/david/
+ssh david@192.168.1.110
+sudo cp /home/david/configuration.yaml /opt/homeassistant/config/
+docker restart homeassistant
+```
+
+### Integration Rollback
+
+```powershell
+# Remove custom component
+ssh david@192.168.1.110
+sudo rm -rf /opt/homeassistant/config/custom_components/my_integration/
+docker restart homeassistant
+```
+
+## Testing Tools & Commands
+
+### Useful HA CLI Commands
+
+```bash
+# Check config
+ha core check
+
+# Restart HA
+ha core restart
+
+# View logs
+ha core logs
+
+# Supervisor info
+ha supervisor info
+```
+
+### Python Testing Tools
+
+```powershell
+# Pytest
+pytest tests\ -v
+
+# Coverage
+pytest --cov=src --cov-report=html tests\
+
+# Type checking
+mypy src\
+
+# Linting
+ruff check src\
+black --check src\
+```
+
+### YAML Tools
+
+```powershell
+# Validate YAML
+yamllint config.yaml
+
+# Format YAML (be careful - can reorder!)
+prettier --write config.yaml
+
+# Check for duplicates
+# (use grep/Select-String for duplicate keys)
+Select-String -Pattern "^  - name:" configuration.yaml
+```
+
+## Continuous Testing
+
+### Automated Checks
+
+Consider setting up:
+
+1. **Pre-commit hooks**
+
+   ```yaml
+   # .pre-commit-config.yaml
+   repos:
+     - repo: https://github.com/adrienverge/yamllint
+       hooks:
+         - id: yamllint
+   ```
+
+2. **GitHub Actions** (if using GitHub)
+
+   ```yaml
+   # .github/workflows/validate.yml
+   name: Validate Configs
+   on: [push, pull_request]
+   jobs:
+     validate:
+       runs-on: ubuntu-latest
+       steps:
+         - uses: actions/checkout@v2
+         - name: Validate YAML
+           run: yamllint homeassistant-config/
+   ```
+
+3. **Scheduled validation**
+   ```powershell
+   # PowerShell scheduled task to check config daily
+   $action = New-ScheduledTaskAction -Execute "PowerShell" `
+     -Argument "-File C:\scripts\validate-ha-config.ps1"
+   $trigger = New-ScheduledTaskTrigger -Daily -At 3am
+   Register-ScheduledTask -Action $action -Trigger $trigger -TaskName "ValidateHA"
+   ```

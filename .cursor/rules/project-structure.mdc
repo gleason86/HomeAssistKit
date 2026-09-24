@@ -1,0 +1,110 @@
+# Project Structure & Workflow
+
+## Repository Organization
+
+This repository is organized into three main domains:
+
+### 1. `homeassistant-config/` - Configuration & Automations
+- YAML configurations for Home Assistant
+- Template sensors, automations, scripts
+- Dashboard configurations
+- **Deployed to:** `192.168.1.110:/opt/homeassistant/config/`
+
+### 2. `integrations/` - Custom Integrations
+- Python code for custom HA integrations
+- Shared libraries and utilities
+- Domain-specific logic
+
+### 3. `agents/` - MCP Servers & Orchestration
+- MCP server implementations
+- Agent orchestration code
+- HA client libraries for MCP integration
+
+## Scope Awareness
+
+When working on code:
+1. **Identify the domain** you're working in
+2. **State it explicitly** ("editing automation in homeassistant-config")
+3. **Follow domain-specific conventions** (YAML vs Python patterns)
+
+## Version Control
+
+### Commit Guidelines
+- Create **small, focused changes**: one concern per commit
+- Commit messages should include:
+  - **What** changed (the technical change)
+  - **Why** it changed (the motivation)
+  - **Risk/migration** notes if applicable
+
+### Change Summary Template
+```
+What changed: [technical description]
+Why: [business/functional reason]
+Risk: [potential issues, or "low risk"]
+Migration: [steps needed, or "none"]
+```
+
+### Branch Strategy
+- Keep changes isolated in branches when testing significant features
+- Test in development environment before merging to main
+- Tag releases that represent stable deployments
+
+## Code Style
+
+### Python
+- Use `async`/`await` patterns consistently
+- Add type hints for all function signatures
+- Follow existing error handling patterns in the codebase
+- Prefer extending existing helpers over duplicating logic
+
+### YAML
+- 2-space indentation (no tabs)
+- Maintain alphabetical or logical ordering
+- Don't reorder keys unnecessarily - keep diffs minimal
+- Add comments for complex logic or non-obvious behavior
+
+### Documentation
+- Update README files when adding new components
+- Document environment variables and configuration requirements
+- Include example usage for new utilities or scripts
+
+## Testing & Validation
+
+### Before Committing
+- Run linters: `yamllint`, `black`, `ruff`, etc.
+- Check for syntax errors in changed files
+- Test locally if possible before deploying to production
+
+### After Deployment
+- Monitor Home Assistant logs for errors
+- Verify automations trigger as expected
+- Check sensor values are updating correctly
+- Validate integrations maintain connection
+
+## File Naming Conventions
+
+### Configuration Files
+- `configuration.yaml` - Main HA configuration
+- `configuration.remote.yaml` - Production deployment version
+- `secrets.yaml` - Sensitive data (gitignored)
+
+### Python Modules
+- `snake_case` for files and functions
+- `PascalCase` for classes
+- Descriptive names: `ha_client.py`, `data_processor.py`
+
+### Dashboards
+- Descriptive of purpose: `tesla-energy-dashboard.yaml`
+- Group related dashboards in subdirectories
+
+## Dependencies
+
+### Python Packages
+- Define in `requirements.txt` or `pyproject.toml`
+- Pin versions for reproducibility
+- Document why unusual dependencies are needed
+
+### Home Assistant Integrations
+- Document required custom components in README
+- Note HACS dependencies separately
+- Track minimum HA version requirements

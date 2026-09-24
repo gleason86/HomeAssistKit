@@ -1,0 +1,1146 @@
+title: Tesla Energy
+views:
+  - title: Today
+    path: today
+    icon: mdi:calendar-today
+    cards:
+      - type: custom:power-flow-card-plus
+        entities:
+          grid:
+            entity: sensor.west_sacramento_grid_power
+            name: Grid
+          solar:
+            entity: sensor.west_sacramento_solar_power
+            name: Solar
+          battery:
+            entity: sensor.west_sacramento_battery_power
+            name: Powerwall
+            state_of_charge: sensor.west_sacramento_percentage_charged
+          home:
+            entity: sensor.west_sacramento_load_power
+            name: Home
+        watt_threshold: 1000
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.west_sacramento_solar_generated
+            name: Solar Today
+          - type: entity
+            entity: sensor.west_sacramento_home_usage
+            name: Home Usage
+          - type: entity
+            entity: sensor.west_sacramento_grid_imported
+            name: Grid Import
+      - type: custom:apexcharts-card
+        header:
+          title: Today's Energy Sources
+          show: true
+        chart_type: donut
+        series:
+          - entity: sensor.west_sacramento_consumer_imported_from_solar
+            name: Solar
+            color: '#FFB800'
+          - entity: sensor.west_sacramento_consumer_imported_from_battery
+            name: Battery
+            color: '#00C853'
+          - entity: sensor.west_sacramento_consumer_imported_from_grid
+            name: Grid
+            color: '#607D8B'
+      - type: custom:mini-graph-card
+        name: Battery Level (24h)
+        entities:
+          - entity: sensor.west_sacramento_percentage_charged
+            color: '#00C853'
+        hours_to_show: 24
+        line_width: 2
+        show:
+          fill: gradient
+  - title: Week
+    path: week
+    icon: mdi:calendar-week
+    cards:
+      - type: custom:mini-graph-card
+        name: Home Load (7 Days)
+        entities:
+          - entity: sensor.west_sacramento_load_power
+            color: '#2196F3'
+        hours_to_show: 168
+        line_width: 2
+        points_per_hour: 0.5
+        show:
+          fill: gradient
+      - type: custom:mini-graph-card
+        name: Solar Power (7 Days)
+        entities:
+          - entity: sensor.west_sacramento_solar_power
+            color: '#FFB800'
+        hours_to_show: 168
+        line_width: 2
+        points_per_hour: 0.5
+        show:
+          fill: gradient
+      - type: custom:mini-graph-card
+        name: Battery Level (7 Days)
+        entities:
+          - entity: sensor.west_sacramento_percentage_charged
+            color: '#00C853'
+        hours_to_show: 168
+        line_width: 2
+        points_per_hour: 0.5
+        show:
+          fill: gradient
+      - type: custom:mini-graph-card
+        name: Grid Power (7 Days)
+        entities:
+          - entity: sensor.west_sacramento_grid_power
+            color: '#607D8B'
+        hours_to_show: 168
+        line_width: 2
+        points_per_hour: 0.5
+        show:
+          fill: gradient
+  - title: Month
+    path: month
+    icon: mdi:calendar-month
+    cards:
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.solar_energy_this_month
+            name: Solar This Month
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.totalusage_energy_this_month
+            name: Usage This Month
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.mainsfromgrid_energy_this_month
+            name: Grid Import
+            icon: mdi:transmission-tower
+      - type: custom:mini-graph-card
+        name: Home Load (30 Days)
+        entities:
+          - entity: sensor.west_sacramento_load_power
+            color: '#2196F3'
+        hours_to_show: 720
+        line_width: 1
+        points_per_hour: 0.1
+        show:
+          fill: gradient
+      - type: custom:mini-graph-card
+        name: Solar Power (30 Days)
+        entities:
+          - entity: sensor.west_sacramento_solar_power
+            color: '#FFB800'
+        hours_to_show: 720
+        line_width: 1
+        points_per_hour: 0.1
+        show:
+          fill: gradient
+      - type: custom:apexcharts-card
+        header:
+          title: Top Consumers This Month
+          show: true
+        chart_type: donut
+        series:
+          - entity: sensor.lg_main_energy_this_month
+            name: HVAC Main
+            color: '#F44336'
+          - entity: sensor.subpanel_energy_this_month
+            name: Laundry
+            color: '#E91E63'
+          - entity: sensor.lg_mini_energy_this_month
+            name: HVAC Mini
+            color: '#9C27B0'
+          - entity: sensor.office_os_guest_bath_energy_this_month
+            name: Office
+            color: '#673AB7'
+          - entity: sensor.refrigerator_energy_this_month
+            name: Refrigerator
+            color: '#00BCD4'
+  - title: Year
+    path: year
+    icon: mdi:calendar
+    cards:
+      - type: markdown
+        content: |
+          ## Yearly Statistics
+          Long-term statistics from Home Assistant's recorder.
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.west_sacramento_home_usage
+            name: Home Usage Total
+          - type: entity
+            entity: sensor.west_sacramento_solar_generated
+            name: Solar Generated Total
+          - type: entity
+            entity: sensor.west_sacramento_grid_imported
+            name: Grid Import Total
+      - type: history-graph
+        title: Home Usage History
+        hours_to_show: 168
+        entities:
+          - entity: sensor.west_sacramento_load_power
+            name: Home Load
+      - type: history-graph
+        title: Solar Production History
+        hours_to_show: 168
+        entities:
+          - entity: sensor.west_sacramento_solar_power
+            name: Solar
+  - title: Lifetime
+    path: lifetime
+    icon: mdi:infinity
+    cards:
+      - type: markdown
+        content: |
+          ## Lifetime Energy Statistics
+          Cumulative totals since system installation.
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.west_sacramento_home_usage
+            name: Total Home Usage
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.west_sacramento_solar_generated
+            name: Total Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.west_sacramento_grid_imported
+            name: Total Grid Import
+            icon: mdi:transmission-tower
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.west_sacramento_grid_exported
+            name: Total Export
+            icon: mdi:transmission-tower-export
+          - type: entity
+            entity: sensor.west_sacramento_battery_charged
+            name: Total Charged
+            icon: mdi:battery-plus
+          - type: entity
+            entity: sensor.west_sacramento_battery_discharged
+            name: Total Discharged
+            icon: mdi:battery-minus
+  - title: Battery
+    path: battery
+    icon: mdi:battery-charging
+    cards:
+      - type: custom:mini-graph-card
+        name: Battery State of Charge
+        entities:
+          - entity: sensor.west_sacramento_percentage_charged
+            color: '#00C853'
+        hours_to_show: 48
+        line_width: 3
+        font_size: 100
+        show:
+          labels: true
+          state: true
+          fill: gradient
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.west_sacramento_battery_charged
+            name: Charged Today
+            icon: mdi:battery-plus
+          - type: entity
+            entity: sensor.west_sacramento_battery_discharged
+            name: Discharged Today
+            icon: mdi:battery-minus
+      - type: custom:apexcharts-card
+        header:
+          title: Battery Charge Sources
+          show: true
+        chart_type: donut
+        series:
+          - entity: sensor.west_sacramento_battery_imported_from_solar
+            name: From Solar
+            color: '#FFB800'
+          - entity: sensor.west_sacramento_battery_imported_from_grid
+            name: From Grid
+            color: '#607D8B'
+  # Energy Flow Sankey Chart View
+  - title: Flow
+    path: flow
+    icon: mdi:chart-sankey
+    cards:
+      # Real-time power flow using Emporia sensors (all in Watts)
+      - type: custom:sankey-chart
+        show_names: true
+        show_icons: true
+        show_units: true
+        show_states: true
+        wide: true
+        height: 500
+        min_box_height: 3
+        min_box_distance: 5
+        sections:
+          # Section 1: Energy Sources
+          - entities:
+              - entity_id: sensor.solar_power_minute_average
+                name: ☀️ Solar
+                color: '#FFB800'
+                children:
+                  - sensor.totalusage_power_minute_average
+              - entity_id: sensor.powerwall_power_minute_average
+                name: 🔋 Battery
+                color: '#00C853'
+                children:
+                  - sensor.totalusage_power_minute_average
+          # Section 2: Total Home Consumption
+          - entities:
+              - entity_id: sensor.totalusage_power_minute_average
+                name: 🏠 Home
+                color: '#2196F3'
+                children:
+                  - sensor.lg_main_power_minute_average
+                  - sensor.lg_mini_power_minute_average
+                  - sensor.refrigerator_power_minute_average
+                  - sensor.guest_bed_o_l_main_bed_o_power_minute_average
+                  - sensor.living_room_lights_and_outlet_power_minute_average
+                  - sensor.office_os_guest_bath_power_minute_average
+                  - sensor.water_filters_power_minute_average
+                  - sensor.dining_laundry_room_lights_power_minute_average
+                  - sensor.balance_power_minute_average
+          # Section 3: Individual Consumers
+          - entities:
+              - entity_id: sensor.lg_main_power_minute_average
+                name: HVAC Main
+                color: '#F44336'
+              - entity_id: sensor.lg_mini_power_minute_average
+                name: Mini Split
+                color: '#E91E63'
+              - entity_id: sensor.refrigerator_power_minute_average
+                name: Fridge
+                color: '#4CAF50'
+              - entity_id: sensor.guest_bed_o_l_main_bed_o_power_minute_average
+                name: Bedrooms
+                color: '#9C27B0'
+              - entity_id: sensor.living_room_lights_and_outlet_power_minute_average
+                name: Living Room
+                color: '#03A9F4'
+              - entity_id: sensor.office_os_guest_bath_power_minute_average
+                name: Office
+                color: '#673AB7'
+              - entity_id: sensor.water_filters_power_minute_average
+                name: Water Filters
+                color: '#00BCD4'
+              - entity_id: sensor.dining_laundry_room_lights_power_minute_average
+                name: Dining
+                color: '#FFC107'
+              - entity_id: sensor.balance_power_minute_average
+                name: Other
+                color: '#9E9E9E'
+
+      # Helpful context card
+      - type: markdown
+        content: |
+          **Real-time Power Flow** showing where your electricity is going right now.
+          - ☀️ **Solar**: Power from solar panels
+          - 🔋 **Battery**: Powerwall discharge  
+          - 🏠 **Home**: Total consumption flowing to devices
+
+      # Tesla system overview with kW values
+      - type: custom:sankey-chart
+        title: Tesla System Flow (kW)
+        show_names: true
+        show_states: true
+        show_units: true
+        unit_prefix: k
+        height: 300
+        min_box_height: 3
+        sections:
+          - entities:
+              - entity_id: sensor.west_sacramento_solar_power
+                name: Solar
+                color: '#FFB800'
+                children:
+                  - sensor.west_sacramento_load_power
+                  - sensor.west_sacramento_battery_power
+              - entity_id: sensor.west_sacramento_grid_power
+                name: Grid
+                color: '#607D8B'
+                children:
+                  - sensor.west_sacramento_load_power
+          - entities:
+              - entity_id: sensor.west_sacramento_load_power
+                name: Home
+                color: '#2196F3'
+              - entity_id: sensor.west_sacramento_battery_power
+                name: Battery
+                color: '#00C853'
+
+  # Devices View with Grid Layout
+  - title: Devices
+    path: devices
+    icon: mdi:devices
+    type: sections
+    sections:
+      - title: HVAC
+        cards:
+          - type: entity
+            entity: sensor.lg_main_energy_today
+            name: Main HVAC
+            icon: mdi:air-conditioner
+          - type: entity
+            entity: sensor.lg_mini_energy_today
+            name: Mini Split
+            icon: mdi:air-conditioner
+
+      - title: Kitchen
+        cards:
+          - type: entity
+            entity: sensor.refrigerator_energy_today
+            name: Refrigerator
+            icon: mdi:fridge
+          - type: entity
+            entity: sensor.dishwasher_energy_today
+            name: Dishwasher
+            icon: mdi:dishwasher
+          - type: entity
+            entity: sensor.kitchen_dining_room_energy_today
+            name: Kitchen Lights
+            icon: mdi:ceiling-light
+          - type: entity
+            entity: sensor.kitchen_counter_outlets_energy_today
+            name: Counter Outlets
+            icon: mdi:power-socket-us
+          - type: entity
+            entity: sensor.kitchen_island_and_stove_energy_today
+            name: Island/Stove
+            icon: mdi:stove
+          - type: entity
+            entity: sensor.kitchen_sink_outlet_right_energy_today
+            name: Sink Outlet R
+            icon: mdi:power-socket-us
+          - type: entity
+            entity: sensor.kitchen_outlet_sink_far_right_energy_today
+            name: Sink Outlet Far R
+            icon: mdi:power-socket-us
+
+      - title: Living Areas
+        cards:
+          - type: entity
+            entity: sensor.living_room_lights_and_outlet_energy_today
+            name: Living Room
+            icon: mdi:sofa
+          - type: entity
+            entity: sensor.living_room_entry_outside_energy_today
+            name: Entry/Outside
+            icon: mdi:door
+          - type: entity
+            entity: sensor.emporia_energy_today
+            name: Entry L&O
+            icon: mdi:lightbulb
+          - type: entity
+            entity: sensor.dining_laundry_room_lights_energy_today
+            name: Dining Lights
+            icon: mdi:ceiling-light
+          - type: entity
+            entity: sensor.dining_room_outlet_energy_today
+            name: Dining Outlet
+            icon: mdi:power-socket-us
+          - type: entity
+            entity: sensor.fireplace_energy_today
+            name: Fireplace
+            icon: mdi:fireplace
+
+      - title: Office & Guest
+        cards:
+          - type: entity
+            entity: sensor.office_os_guest_bath_energy_today
+            name: Office/Guest Bath
+            icon: mdi:desk
+          - type: entity
+            entity: sensor.office_lights_energy_today
+            name: Office Lights
+            icon: mdi:desk-lamp
+
+      - title: Bedrooms
+        cards:
+          - type: entity
+            entity: sensor.guest_bed_o_l_main_bed_o_energy_today
+            name: Guest/Main Bed
+            icon: mdi:bed
+          - type: entity
+            entity: sensor.main_bed_lights_energy_today
+            name: Main Bed Lights
+            icon: mdi:lamp
+          - type: entity
+            entity: sensor.main_bed_outlets_energy_today
+            name: Main Bed Outlets
+            icon: mdi:power-socket-us
+
+      - title: Bathrooms
+        cards:
+          - type: entity
+            entity: sensor.main_bath_lights_energy_today
+            name: Main Bath Lights
+            icon: mdi:vanity-light
+          - type: entity
+            entity: sensor.main_bath_outlets_energy_today
+            name: Main Bath Outlets
+            icon: mdi:power-socket-us
+
+      - title: Laundry
+        cards:
+          - type: entity
+            entity: sensor.dryer_energy_today
+            name: Dryer
+            icon: mdi:tumble-dryer
+          - type: entity
+            entity: sensor.water_heater_energy_today_2
+            name: Water Heater
+            icon: mdi:water-boiler
+          - type: entity
+            entity: sensor.laundry_room_outlets_energy_today
+            name: Laundry Outlets
+            icon: mdi:power-socket-us
+
+      - title: Garage & Utility
+        cards:
+          - type: entity
+            entity: sensor.garage_entry_and_pantry_energy_today
+            name: Garage/Pantry
+            icon: mdi:garage
+          - type: entity
+            entity: sensor.ev_charger_energy_today
+            name: EV Charger
+            icon: mdi:ev-station
+          - type: entity
+            entity: sensor.water_filters_energy_today
+            name: Water Filters
+            icon: mdi:water
+
+      - title: Outdoor
+        cards:
+          - type: entity
+            entity: sensor.shed_energy_today
+            name: Well Pump
+            icon: mdi:water-pump
+          - type: entity
+            entity: sensor.shed_lights_and_outlets_energy_today
+            name: Shed Lights
+            icon: mdi:lightbulb
+          - type: entity
+            entity: sensor.pergola_outlet_energy_today
+            name: Pergola
+            icon: mdi:pergola
+          - type: entity
+            entity: sensor.pool_spa_energy_today
+            name: Pool/Spa
+            icon: mdi:pool
+
+      - title: Untracked
+        cards:
+          - type: entity
+            entity: sensor.balance_energy_today
+            name: Balance
+            icon: mdi:help-circle
+
+  # ══════════════════════════════════════════════════════════════
+  # TODAY SUMMARY
+  # ══════════════════════════════════════════════════════════════
+  - title: 📅 Today
+    path: summary-today
+    icon: mdi:calendar-today
+    cards:
+      # Top stats row
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.totalusage_energy_today
+            name: Home Usage
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.solar_energy_today
+            name: Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.mainsfromgrid_energy_today
+            name: From Grid
+            icon: mdi:transmission-tower
+          - type: entity
+            entity: sensor.west_sacramento_percentage_charged
+            name: Battery
+            icon: mdi:battery
+
+      # Donut chart
+      - type: custom:apexcharts-card
+        header:
+          title: Today's Energy Distribution
+          show: true
+        chart_type: donut
+        apex_config:
+          chart:
+            height: 350
+          legend:
+            show: true
+            position: right
+            fontSize: '14px'
+          tooltip:
+            y:
+              formatter: |
+                EVAL:function(val) { return val.toFixed(1) + ' kWh' }
+          dataLabels:
+            formatter: |
+              EVAL:function(val) { return val.toFixed(0) + '%' }
+          plotOptions:
+            pie:
+              donut:
+                size: '60%'
+                labels:
+                  show: true
+                  name:
+                    show: true
+                    fontSize: '14px'
+                  value:
+                    show: true
+                    fontSize: '20px'
+                    formatter: |
+                      EVAL:function(val) { return parseFloat(val).toFixed(1) + ' kWh' }
+                  total:
+                    show: true
+                    label: Total
+                    fontSize: '14px'
+                    formatter: |
+                      EVAL:function(w) {
+                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(1) + ' kWh'
+                      }
+        series:
+          - entity: sensor.lg_main_energy_today
+            name: HVAC Main
+            color: '#F44336'
+          - entity: sensor.lg_mini_energy_today
+            name: Mini Split
+            color: '#E91E63'
+          - entity: sensor.office_os_guest_bath_energy_today
+            name: Office/Guest
+            color: '#673AB7'
+          - entity: sensor.living_room_lights_and_outlet_energy_today
+            name: Living Room
+            color: '#2196F3'
+          - entity: sensor.guest_bed_o_l_main_bed_o_energy_today
+            name: Bedrooms
+            color: '#9C27B0'
+          - entity: sensor.refrigerator_energy_today
+            name: Refrigerator
+            color: '#4CAF50'
+          - entity: sensor.water_filters_energy_today
+            name: Water Filters
+            color: '#00BCD4'
+          - entity: sensor.water_heater_energy_today_2
+            name: Water Heater
+            color: '#FF9800'
+          - entity: sensor.ev_charger_energy_today
+            name: EV Charger
+            color: '#8BC34A'
+          - entity: sensor.balance_energy_today
+            name: Untracked
+            color: '#9E9E9E'
+
+      # Device table
+      - type: entities
+        title: All Devices (kWh Today)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.lg_main_energy_today
+            name: 🌡️ HVAC Main
+          - entity: sensor.lg_mini_energy_today
+            name: 🌡️ Mini Split
+          - entity: sensor.office_os_guest_bath_energy_today
+            name: 💼 Office/Guest Bath
+          - entity: sensor.living_room_lights_and_outlet_energy_today
+            name: 🛋️ Living Room
+          - entity: sensor.guest_bed_o_l_main_bed_o_energy_today
+            name: 🛏️ Bedrooms
+          - entity: sensor.refrigerator_energy_today
+            name: 🍳 Refrigerator
+          - entity: sensor.water_filters_energy_today
+            name: 💧 Water Filters
+          - entity: sensor.dining_laundry_room_lights_energy_today
+            name: 🍽️ Dining/Laundry
+          - entity: sensor.water_heater_energy_today_2
+            name: 🚿 Water Heater
+          - entity: sensor.ev_charger_energy_today
+            name: 🔌 EV Charger
+          - entity: sensor.garage_entry_and_pantry_energy_today
+            name: 🚗 Garage/Pantry
+          - entity: sensor.dryer_energy_today
+            name: 👕 Dryer
+          - entity: sensor.balance_energy_today
+            name: ❓ Untracked
+            icon: mdi:help-circle
+
+  # ══════════════════════════════════════════════════════════════
+  # THIS MONTH SUMMARY
+  # ══════════════════════════════════════════════════════════════
+  - title: 📆 Month
+    path: summary-month
+    icon: mdi:calendar-month
+    cards:
+      # Top stats row
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.totalusage_energy_this_month
+            name: Home Usage
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.solar_energy_this_month
+            name: Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.mainsfromgrid_energy_this_month
+            name: From Grid
+            icon: mdi:transmission-tower
+          - type: entity
+            entity: sensor.mainstogrid_energy_this_month
+            name: To Grid
+            icon: mdi:transmission-tower-export
+
+      # Donut chart - Monthly
+      - type: custom:apexcharts-card
+        header:
+          title: This Month's Energy Distribution
+          show: true
+        chart_type: donut
+        apex_config:
+          chart:
+            height: 350
+          legend:
+            show: true
+            position: right
+            fontSize: '14px'
+          tooltip:
+            y:
+              formatter: |
+                EVAL:function(val) { return val.toFixed(1) + ' kWh' }
+          dataLabels:
+            formatter: |
+              EVAL:function(val) { return val.toFixed(0) + '%' }
+          plotOptions:
+            pie:
+              donut:
+                size: '60%'
+                labels:
+                  show: true
+                  name:
+                    show: true
+                    fontSize: '14px'
+                  value:
+                    show: true
+                    fontSize: '20px'
+                    formatter: |
+                      EVAL:function(val) { return parseFloat(val).toFixed(1) + ' kWh' }
+                  total:
+                    show: true
+                    label: Total
+                    fontSize: '14px'
+                    formatter: |
+                      EVAL:function(w) {
+                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(1) + ' kWh'
+                      }
+        series:
+          - entity: sensor.lg_main_energy_this_month
+            name: HVAC Main
+            color: '#F44336'
+          - entity: sensor.lg_mini_energy_this_month
+            name: Mini Split
+            color: '#E91E63'
+          - entity: sensor.office_os_guest_bath_energy_this_month
+            name: Office/Guest
+            color: '#673AB7'
+          - entity: sensor.living_room_lights_and_outlet_energy_this_month
+            name: Living Room
+            color: '#2196F3'
+          - entity: sensor.guest_bed_o_l_main_bed_o_energy_this_month
+            name: Bedrooms
+            color: '#9C27B0'
+          - entity: sensor.refrigerator_energy_this_month
+            name: Refrigerator
+            color: '#4CAF50'
+          - entity: sensor.water_filters_energy_this_month
+            name: Water Filters
+            color: '#00BCD4'
+          - entity: sensor.water_heater_energy_this_month_2
+            name: Water Heater
+            color: '#FF9800'
+          - entity: sensor.ev_charger_energy_this_month
+            name: EV Charger
+            color: '#8BC34A'
+          - entity: sensor.dryer_energy_this_month
+            name: Dryer
+            color: '#795548'
+          - entity: sensor.balance_energy_this_month
+            name: Untracked
+            color: '#9E9E9E'
+
+      # Device table - Monthly
+      - type: entities
+        title: All Devices (kWh This Month)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.lg_main_energy_this_month
+            name: 🌡️ HVAC Main
+          - entity: sensor.lg_mini_energy_this_month
+            name: 🌡️ Mini Split
+          - entity: sensor.office_os_guest_bath_energy_this_month
+            name: 💼 Office/Guest Bath
+          - entity: sensor.living_room_lights_and_outlet_energy_this_month
+            name: 🛋️ Living Room
+          - entity: sensor.guest_bed_o_l_main_bed_o_energy_this_month
+            name: 🛏️ Bedrooms
+          - entity: sensor.refrigerator_energy_this_month
+            name: 🍳 Refrigerator
+          - entity: sensor.water_filters_energy_this_month
+            name: 💧 Water Filters
+          - entity: sensor.dining_laundry_room_lights_energy_this_month
+            name: 🍽️ Dining/Laundry
+          - entity: sensor.water_heater_energy_this_month_2
+            name: 🚿 Water Heater
+          - entity: sensor.ev_charger_energy_this_month
+            name: 🔌 EV Charger
+          - entity: sensor.garage_entry_and_pantry_energy_this_month
+            name: 🚗 Garage/Pantry
+          - entity: sensor.dryer_energy_this_month
+            name: 👕 Dryer
+          - entity: sensor.dishwasher_energy_this_month
+            name: 🍽️ Dishwasher
+          - entity: sensor.balance_energy_this_month
+            name: ❓ Untracked
+            icon: mdi:help-circle
+
+      # Daily trend for the month
+      - type: custom:apexcharts-card
+        header:
+          title: Daily Usage This Month
+          show: true
+        graph_span: 30d
+        span:
+          end: day
+        apex_config:
+          chart:
+            height: 250
+          xaxis:
+            labels:
+              format: MMM dd
+        series:
+          - entity: sensor.totalusage_energy_today
+            type: column
+            name: Daily Usage
+            color: '#2196F3'
+            group_by:
+              func: max
+              duration: 1d
+
+  # ══════════════════════════════════════════════════════════════
+  # THIS WEEK SUMMARY (requires utility meters after HA restart)
+  # ══════════════════════════════════════════════════════════════
+  - title: 📊 Week
+    path: summary-week
+    icon: mdi:calendar-week
+    cards:
+      # Top stats row - Weekly totals
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.home_usage_weekly
+            name: Home Usage
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.solar_generated_weekly
+            name: Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.grid_imported_weekly
+            name: From Grid
+            icon: mdi:transmission-tower
+          - type: entity
+            entity: sensor.grid_exported_weekly
+            name: To Grid
+            icon: mdi:transmission-tower-export
+
+      # Energy sources this week
+      - type: custom:apexcharts-card
+        header:
+          title: This Week's Energy Sources
+          show: true
+        chart_type: donut
+        apex_config:
+          chart:
+            height: 300
+          legend:
+            show: true
+            position: right
+          tooltip:
+            y:
+              formatter: |
+                EVAL:function(val) { return val.toFixed(1) + ' kWh' }
+          plotOptions:
+            pie:
+              donut:
+                size: '60%'
+                labels:
+                  show: true
+                  total:
+                    show: true
+                    label: Total
+                    formatter: |
+                      EVAL:function(w) {
+                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(1) + ' kWh'
+                      }
+        series:
+          - entity: sensor.consumer_from_solar_weekly
+            name: From Solar
+            color: '#FFB800'
+          - entity: sensor.consumer_from_battery_weekly
+            name: From Battery
+            color: '#00C853'
+          - entity: sensor.consumer_from_grid_weekly
+            name: From Grid
+            color: '#607D8B'
+
+      # Battery stats this week
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.battery_charged_weekly
+            name: Battery Charged
+            icon: mdi:battery-charging
+          - type: entity
+            entity: sensor.battery_discharged_weekly
+            name: Battery Used
+            icon: mdi:battery-arrow-down
+
+      # 7-day trend
+      - type: custom:apexcharts-card
+        header:
+          title: Daily Usage (Past 7 Days)
+          show: true
+        graph_span: 7d
+        span:
+          end: day
+        apex_config:
+          chart:
+            height: 250
+          xaxis:
+            labels:
+              format: ddd
+        series:
+          - entity: sensor.totalusage_energy_today
+            type: column
+            name: Daily Usage
+            color: '#2196F3'
+            group_by:
+              func: max
+              duration: 1d
+          - entity: sensor.solar_energy_today
+            type: column
+            name: Solar Generated
+            color: '#FFB800'
+            group_by:
+              func: max
+              duration: 1d
+
+  # ══════════════════════════════════════════════════════════════
+  # THIS YEAR SUMMARY
+  # ══════════════════════════════════════════════════════════════
+  - title: 📈 Year
+    path: summary-year
+    icon: mdi:calendar-text
+    cards:
+      # Top stats row - Yearly totals
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.home_usage_yearly
+            name: Home Usage
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.solar_generated_yearly
+            name: Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.grid_imported_yearly
+            name: From Grid
+            icon: mdi:transmission-tower
+          - type: entity
+            entity: sensor.grid_exported_yearly
+            name: To Grid
+            icon: mdi:transmission-tower-export
+
+      # Yearly energy breakdown
+      - type: custom:apexcharts-card
+        header:
+          title: This Year's Energy Sources
+          show: true
+        chart_type: donut
+        apex_config:
+          chart:
+            height: 350
+          legend:
+            show: true
+            position: right
+          tooltip:
+            y:
+              formatter: |
+                EVAL:function(val) { return val.toFixed(0) + ' kWh' }
+          plotOptions:
+            pie:
+              donut:
+                size: '60%'
+                labels:
+                  show: true
+                  value:
+                    formatter: |
+                      EVAL:function(val) { return parseFloat(val).toFixed(0) + ' kWh' }
+                  total:
+                    show: true
+                    label: Total
+                    formatter: |
+                      EVAL:function(w) {
+                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(0) + ' kWh'
+                      }
+        series:
+          - entity: sensor.solar_generated_yearly
+            name: Solar Generated
+            color: '#FFB800'
+          - entity: sensor.grid_imported_yearly
+            name: Grid Imported
+            color: '#607D8B'
+
+      # Monthly trend
+      - type: custom:apexcharts-card
+        header:
+          title: Monthly Usage (Past 12 Months)
+          show: true
+        graph_span: 365d
+        span:
+          end: month
+        apex_config:
+          chart:
+            height: 300
+          xaxis:
+            labels:
+              format: MMM
+        series:
+          - entity: sensor.west_sacramento_home_usage
+            type: column
+            name: Home Usage
+            color: '#2196F3'
+            group_by:
+              func: delta
+              duration: 1month
+          - entity: sensor.west_sacramento_solar_generated
+            type: column
+            name: Solar
+            color: '#FFB800'
+            group_by:
+              func: delta
+              duration: 1month
+
+      # Yearly stats
+      - type: markdown
+        content: |
+          ### 📊 Year Stats
+          - **Net Energy**: Grid Import - Grid Export
+          - **Self-Sufficiency**: % of energy from Solar + Battery
+          - **Grid Independence**: Lower = more self-sufficient
+
+  # ══════════════════════════════════════════════════════════════
+  # LIFETIME SUMMARY
+  # ══════════════════════════════════════════════════════════════
+  - title: ♾️ Lifetime
+    path: summary-lifetime
+    icon: mdi:infinity
+    cards:
+      # Lifetime totals
+      - type: horizontal-stack
+        cards:
+          - type: entity
+            entity: sensor.home_usage_lifetime
+            name: Total Usage
+            icon: mdi:home-lightning-bolt
+          - type: entity
+            entity: sensor.solar_generated_lifetime
+            name: Total Solar
+            icon: mdi:solar-power
+          - type: entity
+            entity: sensor.grid_imported_lifetime
+            name: Total Grid Import
+            icon: mdi:transmission-tower
+          - type: entity
+            entity: sensor.grid_exported_lifetime
+            name: Total Grid Export
+            icon: mdi:transmission-tower-export
+
+      # Lifetime energy mix
+      - type: custom:apexcharts-card
+        header:
+          title: All-Time Energy Production
+          show: true
+        chart_type: donut
+        apex_config:
+          chart:
+            height: 350
+          legend:
+            show: true
+            position: right
+          tooltip:
+            y:
+              formatter: |
+                EVAL:function(val) { return val.toFixed(0) + ' kWh' }
+          plotOptions:
+            pie:
+              donut:
+                size: '60%'
+                labels:
+                  show: true
+                  value:
+                    formatter: |
+                      EVAL:function(val) { return parseFloat(val).toFixed(0) + ' kWh' }
+                  total:
+                    show: true
+                    label: Total
+                    formatter: |
+                      EVAL:function(w) {
+                        return w.globals.seriesTotals.reduce((a, b) => a + b, 0).toFixed(0) + ' kWh'
+                      }
+        series:
+          - entity: sensor.solar_generated_lifetime
+            name: Solar Generated
+            color: '#FFB800'
+          - entity: sensor.grid_imported_lifetime
+            name: Grid Imported
+            color: '#607D8B'
+
+      # Environmental impact estimate
+      - type: markdown
+        content: |
+          ### 🌱 Environmental Impact
+          
+          Based on your solar generation, you've offset approximately:
+          - **CO₂ Avoided**: ~0.4 kg per kWh of solar
+          - **Trees Equivalent**: ~1 tree per 20 kWh/year
+          
+          *Values are estimates based on US average grid emissions*
+
+      # Note about lifetime tracking
+      - type: markdown
+        content: |
+          ### ℹ️ About Lifetime Tracking
+          
+          The lifetime meters use **yearly** reset cycle as a practical proxy.
+          They will accumulate throughout the year and reset on January 1st.
+          
+          For true all-time totals, check your:
+          - **Tesla app** for Powerwall lifetime stats
+          - **Emporia app** for device lifetime usage
+          
+          Home Assistant's long-term statistics also store historical data
+          that can be queried for true lifetime totals.

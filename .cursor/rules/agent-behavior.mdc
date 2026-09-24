@@ -1,0 +1,259 @@
+# AI Agent Behavior & Guidelines
+
+## Core Principles
+
+### Read Before Write
+
+- **Always inspect before modifying**
+- Understand existing patterns and conventions
+- Explain what you found before proposing changes
+- Avoid reinventing what already exists
+
+### Environment Awareness
+
+- Assume **dev and prod environments are different**
+- Never assume direct production access
+- Treat `192.168.1.110` as production Home Assistant
+- Local workspace is the development environment
+
+### Change Philosophy
+
+- Prefer **small, incremental changes** over large rewrites
+- One concern per change
+- Generate patches and diffs for review
+- Include rollback instructions with every change
+
+## Tool Usage Patterns
+
+### Read-Only Operations (Default)
+
+Use read-only tools first:
+
+- `read_file` - inspect configurations
+- `grep` / `codebase_search` - find existing patterns
+- `list_dir` - understand structure
+- `mcp_home-assistant_ha_get_state` - check entity states
+- `mcp_home-assistant_ha_list_entities` - discover entities
+
+### Write Operations (Cautious)
+
+Before writing:
+
+1. Read the existing file/configuration
+2. Understand the current behavior
+3. Identify what needs to change
+4. Propose a minimal diff
+5. Explain risks and rollback plan
+
+### State-Changing Operations (Explicit Permission)
+
+Only use state-changing tools when:
+
+- Explicitly requested by the user
+- Part of an agreed testing plan
+- With clear safety boundaries (single entity, short duration)
+
+Examples requiring explicit permission:
+
+- `mcp_home-assistant_ha_call_service` (turning devices on/off)
+- Modifying automations that affect physical devices
+- Changing schedules or triggers
+
+## Deployment Workflow
+
+### 🔒 CRITICAL RULE: Configuration Sync Before Changes
+
+**NEVER push configuration changes without first verifying local files match production!**
+
+### For Configuration Changes
+
+**ALWAYS follow this pattern:**
+
+#### Step 0: **Pull Current Running Config** (MANDATORY)
+
+```powershell
+# Pull the currently deployed configuration from production
+scp david@192.168.1.110:/opt/homeassistant/config/configuration.yaml homeassistant-config\configuration.yaml.running
+
+# Compare with local version
+# If using VS Code/Cursor:
+code --diff homeassistant-config\configuration.yaml homeassistant-config\configuration.yaml.running
+
+# Using PowerShell:
+Compare-Object (Get-Content homeassistant-config\configuration.yaml) `
+               (Get-Content homeassistant-config\configuration.yaml.running)
+```
+
+**If differences found:**
+
+- Review each difference carefully
+- Update local file to match production if needed
+- Document why local differs from production
+- Get user confirmation before proceeding
+
+**If files match:**
+
+- Proceed with making changes
+
+#### Step 1: **Edit local files** in workspace
+
+```powershell
+# Now safe to edit - we know we're starting from production state
+code homeassistant-config\configuration.yaml
+```
+
+#### Step 2: **Copy to remote via SCP**
+
+```powershell
+scp homeassistant-config\configuration.yaml david@192.168.1.110:/home/david/
+```
+
+- ❌ Never use `ssh` with heredoc or inline edits
+- ❌ Never use `echo` or `cat >` for file creation over SSH
+
+#### Step 3: **Deploy on remote**
+
+```powershell
+ssh david@192.168.1.110
+# On remote:
+sudo cp /home/david/configuration.yaml /opt/homeassistant/config/
+docker restart homeassistant  # or systemctl restart
+```
+
+#### Step 4: **Validate deployment**
+
+- Check HA logs for errors
+- Verify sensors/automations work
+- Monitor for unexpected behavior
+
+#### Step 5: **Sync back to local** (if successful)
+
+```powershell
+# Update local copy to reflect what's now running
+Copy-Item homeassistant-config\configuration.yaml `
+          homeassistant-config\configuration.remote.yaml
+```
+
+### For Code Changes
+
+1. Edit and test locally
+2. Commit to git with clear message
+3. Deploy via git pull on remote or manual copy
+4. Restart affected services
+5. Validate functionality
+
+## Risk Assessment
+
+### Always Include
+
+For any non-trivial change, provide:
+
+```markdown
+## Risk Assessment
+
+**Blast Radius:** [single sensor | room | house-wide]
+**Potential Issues:** [what could go wrong]
+**Rollback:** [specific steps to revert]
+**Validation:** [how to confirm it worked]
+```
+
+### Risk Categories
+
+**Low Risk:**
+
+- Adding new template sensors that don't affect automations
+- Dashboard/UI changes
+- Adding new documentation
+
+**Medium Risk:**
+
+- Modifying existing sensor logic
+- Changing automation conditions
+- Updating integration configuration
+
+**High Risk:**
+
+- Changing core automations (security, HVAC, lighting)
+- Modifying integration connection parameters
+- Changes affecting multiple systems
+
+## Communication Style
+
+### Always State Explicitly
+
+1. **What you inspected:** Files, entities, states reviewed
+2. **What you found:** Current behavior or values
+3. **What you propose:** Specific changes with rationale
+4. **How to validate:** Steps to confirm success
+5. **How to rollback:** Exact revert instructions
+
+### Example Template
+
+```markdown
+## Analysis
+
+I inspected:
+
+- File: homeassistant-config/configuration.yaml
+- Entities: sensor.battery_charging_loss, sensor.battery_discharging_loss
+- Current state_class: total
+
+## Issue Found
+
+The sensors use state_class: total which allows negative deltas when
+source sensors reset at midnight.
+
+## Proposed Change
+
+[show diff]
+
+## Validation
+
+After deploying:
+
+1. Check sensor values in HA UI
+2. Wait for source sensor reset
+3. Confirm energy dashboard shows no negative values
+
+## Rollback
+
+If issues occur:
+git revert <commit-hash>
+
+# or restore from backup-configuration.yaml
+```
+
+## Learning & Documentation
+
+### Continuous Improvement
+
+- When encountering new patterns, document them
+- Update these rules with lessons learned
+- Reference official HA docs when relevant
+- Share context about why certain approaches work/don't work
+
+### Knowledge Capture
+
+Document discoveries about:
+
+- Common pitfalls and their solutions
+- Environment-specific quirks
+- Integration behaviors and workarounds
+- Performance considerations
+
+## Rules Maintenance
+
+### Working with Rules Files
+
+- Treat rules as **versioned policy**
+- Don't delete rules marked as `LOCKED`
+- Propose edits as diffs with justification
+- Keep rules short and concrete
+- Reference specific file paths or tool names
+
+### Adding New Rules
+
+- Keep them actionable and specific
+- Include examples when helpful
+- Link to relevant documentation
+- Organize by topic/domain

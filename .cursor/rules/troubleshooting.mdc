@@ -1,0 +1,548 @@
+# Troubleshooting & Incident Response
+
+## Common Issues & Solutions
+
+### Issue: Negative Energy Values in Dashboard
+
+**Symptoms:**
+
+- Energy dashboard shows negative kWh consumption
+- Battery loss sensors display negative totals
+- Statistics graph dips below zero
+
+**Root Cause:**
+
+- Template sensors using `state_class: total` instead of `total_increasing`
+- Source sensors resetting to 0 at midnight or going briefly negative
+- Recorder interpreting reset as negative delta
+
+**Solution:**
+
+```yaml
+# ❌ WRONG - Allows negative deltas
+- name: "Battery Charging Loss"
+  state_class: total
+
+# ✅ CORRECT - Ignores decreases
+- name: "Battery Charging Loss"
+  state_class: total_increasing
+```
+
+**Recovery Steps:**
+
+1. Fix template sensor configuration
+2. Deploy corrected config
+3. Optionally backfill statistics to correct history
+4. Monitor for 24+ hours to ensure no new negatives
+
+---
+
+### Issue: Home Assistant Won't Start After Config Change
+
+**Symptoms:**
+
+- Container restarts repeatedly
+- HA UI not accessible
+- `docker ps` shows container status as restarting
+
+**Diagnosis:**
+
+```powershell
+# Check container status
+ssh david@192.168.1.110 "docker ps -a | grep homeassistant"
+
+# View logs
+ssh david@192.168.1.110 "docker logs homeassistant --tail 100"
+
+# Look for:
+# - YAML syntax errors
+# - Invalid entity references
+# - Integration setup failures
+```
+
+**Quick Fix:**
+
+```bash
+# SSH to host
+ssh david@192.168.1.110
+
+# Restore backup config
+sudo cp /opt/homeassistant/config/configuration.yaml.backup \
+       /opt/homeassistant/config/configuration.yaml
+
+# Restart
+docker restart homeassistant
+
+# Verify it's running
+docker ps | grep homeassistant
+```
+
+**Detailed Fix:**
+
+1. Check config syntax: `docker exec homeassistant hass --script check_config -c /config`
+2. Fix syntax errors in local copy
+3. Re-deploy corrected version
+4. Test before removing backup
+
+---
+
+### Issue: Sensor Shows "Unavailable" or "Unknown"
+
+**Symptoms:**
+
+- Entity shows as "unavailable" in UI
+- Historical data stops updating
+- Automation conditions fail
+
+**Common Causes:**
+
+1. **Integration disconnected**
+
+   ```
+   Check: Settings → Devices & Services
+   Look for: Integration showing "Failed to connect"
+   Fix: Reload integration or restart HA
+   ```
+
+2. **Entity renamed or removed**
+
+   ```
+   Check: Developer Tools → States
+   Search for: Old entity ID
+   Fix: Update references to new entity ID
+   ```
+
+3. **Source sensor offline**
+
+   ```
+   Check: Verify physical device is online
+   Fix: Restart device, check network, verify API access
+   ```
+
+4. **Template error**
+
+   ```yaml
+   # Check: Developer Tools → Template
+   # Test template independently
+   {{ states('sensor.maybe_missing') | float(0) }}
+
+   # Add fallback:
+   {{ states('sensor.source') | float(0) if states('sensor.source') not in ['unavailable', 'unknown'] else 0 }}
+   ```
+
+---
+
+### Issue: Automation Not Triggering
+
+**Diagnosis Checklist:**
+
+- [ ] Automation is enabled (not disabled)
+- [ ] Trigger entity exists and is updating
+- [ ] Conditions are met (test in Developer Tools)
+- [ ] No conflicting automation mode (e.g., `single` prevents concurrent runs)
+
+**Debug Steps:**
+
+1. **Check automation traces**
+
+   ```
+   Settings → Automations → [Your Automation] → ⋮ → Traces
+   Look for: "Triggered" vs "Conditions not met"
+   ```
+
+2. **Test trigger manually**
+
+   ```
+   Open automation → Click "Run"
+   See if actions execute
+   ```
+
+3. **Simplify automation**
+
+   ```yaml
+   # Temporarily remove conditions
+   # Add debug notification
+   action:
+     - service: persistent_notification.create
+       data:
+         message: "Automation triggered at {{ now() }}"
+   ```
+
+4. **Check entity state**
+   ```
+   Developer Tools → States → Search for trigger entity
+   Verify state changes as expected
+   ```
+
+**Common Causes:**
+
+- Condition preventing trigger (test conditions independently)
+- Entity not updating (check integration)
+- Automation mode preventing concurrent runs
+- Trigger configured for wrong state (e.g., `to: 'on'` but entity goes to `'Open'`)
+
+---
+
+### Issue: High CPU/Memory Usage
+
+**Symptoms:**
+
+- HA becomes slow or unresponsive
+- Container uses excessive resources
+- Recorder database grows rapidly
+
+**Diagnosis:**
+
+```bash
+# Check container resources
+docker stats homeassistant
+
+# Check database size
+du -sh /opt/homeassistant/config/home-assistant_v2.db
+
+# Check logs for errors
+docker logs homeassistant | grep -i error
+```
+
+**Common Causes & Fixes:**
+
+1. **Recorder database too large**
+
+   ```yaml
+   # configuration.yaml
+   recorder:
+     purge_keep_days: 7 # Reduce from default 10
+     commit_interval: 30 # Default is 5, increase to reduce writes
+     exclude:
+       domains:
+         - sun
+         - weather
+       entities:
+         - sensor.high_frequency_sensor
+   ```
+
+2. **Too many entities**
+
+   ```yaml
+   # Exclude unnecessary entities from recorder
+   recorder:
+     exclude:
+       entity_globs:
+         - sensor.*_last_update
+         - sensor.*_rssi
+   ```
+
+3. **Integration polling too frequently**
+
+   ```python
+   # In custom integration
+   UPDATE_INTERVAL = timedelta(minutes=5)  # Increase from 1 minute
+   ```
+
+4. **Automation loops**
+   ```
+   Check: Automations that trigger each other
+   Fix: Add conditions to break loop
+   Use: automation.mode: single
+   ```
+
+---
+
+### Issue: Integration Lost Connection
+
+**Symptoms:**
+
+- Integration shows "Failed to setup"
+- All entities from integration unavailable
+- Connection errors in logs
+
+**Recovery Steps:**
+
+1. **Reload integration**
+
+   ```
+   Settings → Devices & Services → [Integration] → ⋮ → Reload
+   ```
+
+2. **Check credentials**
+
+   ```yaml
+   # Verify in configuration or secrets.yaml
+   # API keys, passwords, tokens still valid?
+   ```
+
+3. **Check network connectivity**
+
+   ```powershell
+   # From HA host
+   ssh david@192.168.1.110
+   ping api-endpoint.com
+   curl -I https://api-endpoint.com
+   ```
+
+4. **Review integration logs**
+
+   ```bash
+   docker logs homeassistant | grep integration_name
+   ```
+
+5. **Restart HA**
+
+   ```bash
+   docker restart homeassistant
+   ```
+
+6. **Re-setup integration**
+   ```
+   Settings → Devices & Services → [Integration] → Remove
+   Settings → Devices & Services → Add Integration
+   ```
+
+---
+
+### Issue: Energy Dashboard Missing Data
+
+**Symptoms:**
+
+- Gaps in energy graphs
+- Totals don't match expected values
+- "No data available" message
+
+**Causes & Solutions:**
+
+1. **Sensor state class wrong**
+
+   ```yaml
+   # Must be:
+   state_class: total_increasing  # For cumulative energy
+   # or:
+   state_class: total  # For resettable totals (use carefully)
+   ```
+
+2. **Missing statistics**
+
+   ```
+   Check: Developer Tools → Statistics
+   Look for: Gaps or no data for sensor
+   Fix: Backfill using recorder.import_statistics
+   ```
+
+3. **Sensor goes unavailable**
+
+   ```
+   Check: History graph for sensor
+   Look for: Periods of "unavailable"
+   Fix: Improve sensor reliability or add template fallback
+   ```
+
+4. **Unit mismatch**
+   ```yaml
+   # Energy dashboard requires kWh
+   unit_of_measurement: "kWh"
+   device_class: energy
+   ```
+
+---
+
+## Log Analysis
+
+### Key Log Locations
+
+```bash
+# Home Assistant main log
+docker logs homeassistant
+
+# Follow live logs
+docker logs -f homeassistant
+
+# Last 100 lines
+docker logs --tail 100 homeassistant
+
+# Logs from last hour
+docker logs --since 1h homeassistant
+
+# Filter for errors
+docker logs homeassistant | grep -i error
+
+# Filter for specific integration
+docker logs homeassistant | grep "custom_components.my_integration"
+```
+
+### Log Levels
+
+```yaml
+# configuration.yaml
+logger:
+  default: info
+  logs:
+    # Debug specific integration
+    custom_components.my_integration: debug
+
+    # Quiet noisy integration
+    homeassistant.components.noisy: warning
+
+    # Debug automations
+    homeassistant.components.automation: debug
+```
+
+### Common Error Patterns
+
+**Pattern 1: Integration Setup Failed**
+
+```
+ERROR (MainThread) [homeassistant.setup] Setup failed for my_integration: ...
+```
+
+- Check configuration syntax
+- Verify API credentials
+- Check network connectivity
+
+**Pattern 2: Template Error**
+
+```
+ERROR (MainThread) [homeassistant.helpers.template] Template error: ...
+```
+
+- Test template in Developer Tools
+- Check entity IDs are correct
+- Add fallback for unavailable states
+
+**Pattern 3: Database Error**
+
+```
+ERROR (Recorder) [homeassistant.components.recorder] Error executing query: ...
+```
+
+- Check database size
+- Verify disk space
+- Consider purging old data
+
+**Pattern 4: Timeout Error**
+
+```
+WARNING [asyncio] Executing <Task> took 12.456 seconds
+```
+
+- Integration taking too long
+- Reduce polling frequency
+- Check network latency
+
+---
+
+## Recovery Procedures
+
+### Backup Before Changes
+
+```bash
+# On HA host
+ssh david@192.168.1.110
+sudo cp /opt/homeassistant/config/configuration.yaml \
+       /opt/homeassistant/config/configuration.yaml.backup.$(date +%Y%m%d)
+
+# Backup entire config directory
+sudo tar -czf /home/david/ha-config-backup-$(date +%Y%m%d).tar.gz \
+  /opt/homeassistant/config/
+```
+
+### Full System Recovery
+
+If HA is completely broken:
+
+1. **Stop container**
+
+   ```bash
+   docker stop homeassistant
+   ```
+
+2. **Restore from backup**
+
+   ```bash
+   sudo tar -xzf /home/david/ha-config-backup-YYYYMMDD.tar.gz -C /
+   ```
+
+3. **Start container**
+
+   ```bash
+   docker start homeassistant
+   ```
+
+4. **Verify**
+   ```bash
+   docker logs -f homeassistant
+   ```
+
+### Database Recovery
+
+If database is corrupted:
+
+```bash
+# Stop HA
+docker stop homeassistant
+
+# Backup current DB
+sudo cp /opt/homeassistant/config/home-assistant_v2.db \
+       /home/david/ha_v2.db.corrupted
+
+# Remove database (will recreate on start)
+sudo rm /opt/homeassistant/config/home-assistant_v2.db
+
+# Start HA (will create new DB)
+docker start homeassistant
+
+# Note: All history will be lost
+```
+
+---
+
+## Known Issues Registry
+
+### Issue: Battery Sensors Go Briefly Negative at Midnight
+
+**Status:** Expected behavior
+**Impact:** Can cause negative energy dashboard totals if using `state_class: total`
+**Workaround:** Use `state_class: total_increasing` for all energy loss calculations
+**Permanent Fix:** None needed, this is Tesla Powerwall API behavior
+
+### Issue: Solar Inverter Reports Higher Production Than Emporia
+
+**Status:** Expected behavior
+**Cause:** Inverter efficiency loss - Emporia measures after DC→AC conversion
+**Impact:** Need separate "Inverter Power Consumption" sensor
+**Fix:** Calculate difference and track as separate sensor
+
+### Issue: InfluxDB Data Gaps During HA Restart
+
+**Status:** Known limitation
+**Impact:** Missing data points during restart window
+**Workaround:** Keep restarts during low-activity periods
+**Mitigation:** Use long-term statistics for continuous history
+
+---
+
+## Escalation & Support
+
+### When to Seek Help
+
+1. **Data loss or corruption** - Backup and document before attempting fixes
+2. **Repeated unexplained errors** - Gather logs and system info
+3. **Performance degradation** - Monitor resource usage trends
+4. **Integration breaking changes** - Check HA release notes and integration docs
+
+### Information to Gather
+
+Before asking for help:
+
+- [ ] Home Assistant version
+- [ ] Error messages from logs
+- [ ] Steps to reproduce
+- [ ] Recent changes (last 7 days)
+- [ ] Relevant configuration snippets
+- [ ] System resources (CPU, memory, disk)
+
+### Useful Resources
+
+- Home Assistant Community: https://community.home-assistant.io/
+- GitHub Issues: https://github.com/home-assistant/core/issues
+- Discord: Home Assistant Discord server
+- Documentation: https://www.home-assistant.io/docs/
+- Developer Docs: https://developers.home-assistant.io/
